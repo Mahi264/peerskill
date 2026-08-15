@@ -11,7 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev --name init",
+    "prisma:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset --force --skip-seed"
   },
   "dependencies": {

@@ -9,9 +9,14 @@ const globalForPrisma = globalThis as typeof globalThis & {
 };
 
 function createPrismaClient() {
-  env.DATABASE_URL;
+  const databaseUrl = env.DATABASE_URL;
 
   return new PrismaClient({
+    datasources: {
+      db: {
+        url: databaseUrl,
+      },
+    },
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   });
 }

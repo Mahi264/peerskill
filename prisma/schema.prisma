@@ -15,3 +15,25 @@ model AppMetadata {
 
   @@map("app_metadata")
 }
+
+model User {
+  id                   String     @id @default(cuid())
+  email                String     @unique
+  passwordHash         String
+  collegeEmailVerified Boolean    @default(false)
+  role                 UserRole   @default(STUDENT)
+  status               UserStatus @default(PENDING)
+  createdAt            DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+}
+
+enum UserRole {
+  STUDENT
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}

@@ -5,6 +5,8 @@ import { createHash, randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 
 export const DEFAULT_SESSION_DURATION_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
+export const SESSION_COOKIE_NAME = "peerskill_session";
+
 
 /**
  * Generates an opaque, cryptographically random raw session token.

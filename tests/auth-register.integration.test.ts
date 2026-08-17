@@ -5,12 +5,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 vi.mock("server-only", () => ({}));
 
 // 2. Set environment variables in vi.hoisted so they run before ESM static imports
-const TEST_DB_URL = "file:./test-integration.db";
+const TEST_DB_URL = "file:./test-register-integration.db";
 
 vi.hoisted(() => {
-  process.env.DATABASE_URL = "file:./test-integration.db";
+  process.env.DATABASE_URL = "file:./test-register-integration.db";
   process.env.COLLEGE_EMAIL_DOMAIN = "college.edu";
 });
+
 
 // 3. Import route handler and Prisma client after setting env vars
 import { POST } from "@/app/api/auth/register/route";

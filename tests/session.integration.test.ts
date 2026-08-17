@@ -4,12 +4,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 // Mock server-only so Next.js server-only import doesn't fail in Vitest
 vi.mock("server-only", () => ({}));
 
-const TEST_DB_URL = "file:./test-integration.db";
+const TEST_DB_URL = "file:./test-session-integration.db";
 
 vi.hoisted(() => {
-  process.env.DATABASE_URL = "file:./test-integration.db";
+  process.env.DATABASE_URL = "file:./test-session-integration.db";
   process.env.COLLEGE_EMAIL_DOMAIN = "college.edu";
 });
+
 
 import { prisma } from "@/lib/prisma";
 import {

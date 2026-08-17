@@ -33,3 +33,34 @@ export const updateSkillsSchema = z.object({
 });
 
 export type UpdateSkillsInput = z.infer<typeof updateSkillsSchema>;
+
+export const updatePrivacySchema = z
+  .object({
+    contactVisibility: z.enum(["NOBODY", "CONNECTIONS", "COLLEGE"]).optional(),
+    chatRequestVisibility: z.enum(["NOBODY", "CONNECTIONS", "COLLEGE"]).optional(),
+  })
+  .refine(
+    (data) =>
+      data.contactVisibility !== undefined ||
+      data.chatRequestVisibility !== undefined,
+    {
+      message: "At least one privacy setting must be provided.",
+    },
+  );
+
+export type UpdatePrivacyInput = z.infer<typeof updatePrivacySchema>;
+
+export const updateAvailabilitySchema = z
+  .object({
+    helpAvailable: z.boolean().optional(),
+    helpStatus: z.nullable(z.string().trim()).optional(),
+  })
+  .refine(
+    (data) => data.helpAvailable !== undefined || data.helpStatus !== undefined,
+    {
+      message: "At least one availability setting must be provided.",
+    },
+  );
+
+
+export type UpdateAvailabilityInput = z.infer<typeof updateAvailabilitySchema>;

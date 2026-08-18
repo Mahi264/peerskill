@@ -132,7 +132,7 @@ describe("POST /api/auth/login (Integration - Real SQLite)", () => {
     expect(count).toBe(0);
   });
 
-  it("rejects valid password for PENDING user with 403 and creates no session in SQLite", async () => {
+  it("authenticates a PENDING user against SQLite and creates a session to allow onboarding", async () => {
     const email = "pendinguser@college.edu";
     const password = "correctpassword123";
     const realPasswordHash = await hashPassword(password);
@@ -147,13 +147,30 @@ describe("POST /api/auth/login (Integration - Real SQLite)", () => {
 
     const response = await POST(createRequest({ email, password }));
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(200);
     const json = await response.json();
-    expect(json.error.code).toBe("ACCOUNT_NOT_ACTIVE");
+    expect(json.data.user).toMatchObject({
+      id: user.id,
+      email,
+      status: "PENDING",
+    });
 
-    expect(response.headers.get("set-cookie")).toBeNull();
+    // Verify session cookie is set
+    const cookieHeader = response.headers.get("set-cookie");
+    expect(cookieHeader).toBeTruthy();
+    expect(cookieHeader).toContain(`${SESSION_COOKIE_NAME}=`);
+    expect(cookieHeader?.toLowerCase()).toContain("httponly");
 
-    const count = await prisma.session.count({ where: { userId: user.id } });
-    expect(count).toBe(0);
+    // Verify session row exists in SQLite
+    const sessions = await prisma.session.findMany({
+      where: { userId: user.id },
+    });
+    expect(sessions).toHaveLength(1);
+
+    // Verify token is stored hashed
+    const match = cookieHeader?.match(new RegExp(`${SESSION_COOKIE_NAME}=([^;]+)`));
+    const rawToken = match?.[1];
+    const expectedHash = hashSessionToken(rawToken!);
+    expect(sessions[0].tokenHash).toBe(expectedHash);
   });
 });

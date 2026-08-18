@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockUserFindUnique,
   mockUserCreate,
+  mockCreateSession,
   MockPrismaClientKnownRequestError,
 } = vi.hoisted(() => {
   class _MockPrismaClientKnownRequestError extends Error {
@@ -27,6 +28,7 @@ const {
   return {
     mockUserFindUnique: vi.fn(),
     mockUserCreate: vi.fn(),
+    mockCreateSession: vi.fn(),
     MockPrismaClientKnownRequestError: _MockPrismaClientKnownRequestError,
   };
 });
@@ -49,6 +51,14 @@ vi.mock("@/lib/prisma", () => ({
     },
   },
 }));
+
+vi.mock("@/lib/session", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/session")>();
+  return {
+    ...actual,
+    createSession: mockCreateSession,
+  };
+});
 
 vi.mock("@/lib/env", () => ({
   env: {
@@ -100,11 +110,21 @@ function fakeUser(overrides: Record<string, unknown> = {}) {
 describe("POST /api/auth/register", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCreateSession.mockResolvedValue({
+      rawToken: "raw-session-token-for-register",
+      session: {
+        id: "session-id-1",
+        userId: "test-cuid",
+        tokenHash: "token-hash",
+        expiresAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        createdAt: new Date(),
+      },
+    });
   });
 
   // ----- Success -----
 
-  it("returns 201 and creates a user on valid registration", async () => {
+  it("returns 201, creates a user, and issues a session cookie on valid registration", async () => {
     mockUserFindUnique.mockResolvedValue(null);
     mockUserCreate.mockImplementation(
       async ({ data }: { data: Record<string, unknown> }) =>
@@ -124,9 +144,20 @@ describe("POST /api/auth/register", () => {
     });
     expect(json.data.user).toHaveProperty("id");
     expect(json.data.user).toHaveProperty("createdAt");
+
+    // Verify session was created
+    expect(mockCreateSession).toHaveBeenCalledWith("test-cuid");
+
+    // Verify HTTP-only session cookie is set
+    const cookieHeader = response.headers.get("set-cookie");
+    expect(cookieHeader).toBeTruthy();
+    expect(cookieHeader).toContain("peerskill_session=raw-session-token-for-register");
+    expect(cookieHeader?.toLowerCase()).toContain("httponly");
+    expect(cookieHeader?.toLowerCase()).toContain("path=/");
+    expect(cookieHeader?.toLowerCase()).toContain("samesite=lax");
   });
 
-  it("does not include passwordHash in the response", async () => {
+  it("does not include passwordHash or raw session token in the response", async () => {
     mockUserFindUnique.mockResolvedValue(null);
     mockUserCreate.mockImplementation(
       async ({ data }: { data: Record<string, unknown> }) =>
@@ -137,6 +168,9 @@ describe("POST /api/auth/register", () => {
     const json = await response.json();
 
     expect(json.data.user).not.toHaveProperty("passwordHash");
+    expect(json.data).not.toHaveProperty("token");
+    expect(json.data).not.toHaveProperty("rawToken");
+    expect(json.data.user).not.toHaveProperty("rawToken");
   });
 
   it("normalizes email to lowercase before storing", async () => {

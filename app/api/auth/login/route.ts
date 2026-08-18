@@ -68,12 +68,12 @@ export async function POST(request: Request) {
     return genericAuthError();
   }
 
-  if (user.status !== "ACTIVE") {
+  if (user.status === "SUSPENDED") {
     return NextResponse.json(
       {
         error: {
-          code: "ACCOUNT_NOT_ACTIVE",
-          message: "Account is not active.",
+          code: "ACCOUNT_SUSPENDED",
+          message: "Account is suspended.",
         },
       },
       { status: 403 },

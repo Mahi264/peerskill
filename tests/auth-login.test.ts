@@ -203,20 +203,31 @@ describe("POST /api/auth/login (Unit Tests)", () => {
     expect(mockCreateSession).not.toHaveBeenCalled();
   });
 
-  it("returns 403 when user status is PENDING", async () => {
-    mockUserFindUnique.mockResolvedValue(fakeUser({ status: "PENDING" }));
+  it("returns 200 and issues a session cookie for PENDING user to allow onboarding", async () => {
+    const user = fakeUser({ status: "PENDING" });
+    mockUserFindUnique.mockResolvedValue(user);
     mockVerifyPassword.mockResolvedValue(true);
 
     const response = await POST(createRequest(validBody()));
 
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(200);
+
     const json = await response.json();
-    expect(json.error.code).toBe("ACCOUNT_NOT_ACTIVE");
-    expect(json.error.message).toBe("Account is not active.");
-    expect(mockCreateSession).not.toHaveBeenCalled();
+    expect(json.data.user).toMatchObject({
+      id: "user-cuid-123",
+      email: "active@college.edu",
+      status: "PENDING",
+    });
+
+    expect(mockCreateSession).toHaveBeenCalledWith("user-cuid-123");
+
+    const cookieHeader = response.headers.get("set-cookie");
+    expect(cookieHeader).toBeTruthy();
+    expect(cookieHeader).toContain("peerskill_session=raw-session-token-64-bytes-hex");
+    expect(cookieHeader?.toLowerCase()).toContain("httponly");
   });
 
-  it("returns 403 when user status is SUSPENDED", async () => {
+  it("returns 403 with ACCOUNT_SUSPENDED when user status is SUSPENDED", async () => {
     mockUserFindUnique.mockResolvedValue(fakeUser({ status: "SUSPENDED" }));
     mockVerifyPassword.mockResolvedValue(true);
 
@@ -224,7 +235,8 @@ describe("POST /api/auth/login (Unit Tests)", () => {
 
     expect(response.status).toBe(403);
     const json = await response.json();
-    expect(json.error.code).toBe("ACCOUNT_NOT_ACTIVE");
+    expect(json.error.code).toBe("ACCOUNT_SUSPENDED");
+    expect(json.error.message).toBe("Account is suspended.");
     expect(mockCreateSession).not.toHaveBeenCalled();
   });
 });

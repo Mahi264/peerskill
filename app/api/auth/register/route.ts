@@ -5,6 +5,11 @@ import { isCollegeEmail } from "@/lib/college-email";
 import { env } from "@/lib/env";
 import { hashPassword } from "@/lib/password";
 import { prisma } from "@/lib/prisma";
+import {
+  createSession,
+  DEFAULT_SESSION_DURATION_MS,
+  SESSION_COOKIE_NAME,
+} from "@/lib/session";
 import { registerSchema } from "@/lib/validations/auth";
 
 function duplicateEmailResponse() {
@@ -96,7 +101,9 @@ export async function POST(request: Request) {
     throw error;
   }
 
-  return NextResponse.json(
+  const { rawToken } = await createSession(user.id);
+
+  const response = NextResponse.json(
     {
       data: {
         user: {
@@ -111,4 +118,16 @@ export async function POST(request: Request) {
     },
     { status: 201 },
   );
+
+  response.cookies.set({
+    name: SESSION_COOKIE_NAME,
+    value: rawToken,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: Math.floor(DEFAULT_SESSION_DURATION_MS / 1000),
+  });
+
+  return response;
 }

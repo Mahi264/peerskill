@@ -16,6 +16,7 @@ vi.hoisted(() => {
 // 3. Import route handler and Prisma client after setting env vars
 import { POST } from "@/app/api/auth/register/route";
 import { prisma } from "@/lib/prisma";
+import { hashSessionToken, SESSION_COOKIE_NAME } from "@/lib/session";
 
 function createRequest(body: unknown): Request {
   return new Request("http://localhost:3000/api/auth/register", {
@@ -38,7 +39,8 @@ describe("POST /api/auth/register (Integration - Real SQLite)", () => {
   });
 
   beforeEach(async () => {
-    // Clean user table before each integration test
+    // Clean tables before each integration test
+    await prisma.session.deleteMany();
     await prisma.user.deleteMany();
   });
 
@@ -46,7 +48,7 @@ describe("POST /api/auth/register (Integration - Real SQLite)", () => {
     await prisma.$disconnect();
   });
 
-  it("creates a real User row in SQLite with correct default fields and hashed password", async () => {
+  it("creates a real User row in SQLite with correct default fields, hashed password, and session cookie", async () => {
     const email = "realstudent@college.edu";
     const password = "realpassword123";
 
@@ -73,6 +75,28 @@ describe("POST /api/auth/register (Integration - Real SQLite)", () => {
     expect(dbUser?.role).toBe("STUDENT");
     expect(dbUser?.passwordHash).not.toBe(password);
     expect(dbUser?.passwordHash).toContain("$argon2id$");
+
+    // Verify session cookie is set
+    const cookieHeader = response.headers.get("set-cookie");
+    expect(cookieHeader).toBeTruthy();
+    expect(cookieHeader).toContain(`${SESSION_COOKIE_NAME}=`);
+    expect(cookieHeader?.toLowerCase()).toContain("httponly");
+    expect(cookieHeader?.toLowerCase()).toContain("path=/");
+    expect(cookieHeader?.toLowerCase()).toContain("samesite=lax");
+
+    // Verify session row exists in SQLite
+    const sessions = await prisma.session.findMany({
+      where: { userId: dbUser!.id },
+    });
+    expect(sessions).toHaveLength(1);
+
+    // Verify token is stored hashed
+    const match = cookieHeader?.match(new RegExp(`${SESSION_COOKIE_NAME}=([^;]+)`));
+    expect(match).toBeTruthy();
+    const rawToken = match?.[1];
+    const expectedHash = hashSessionToken(rawToken!);
+    expect(sessions[0].tokenHash).toBe(expectedHash);
+    expect(sessions[0].tokenHash).not.toBe(rawToken);
   });
 
   it("rejects duplicate registration with HTTP 409 when user already exists in SQLite", async () => {

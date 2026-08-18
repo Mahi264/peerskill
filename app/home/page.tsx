@@ -3,13 +3,14 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, HelpCircle, Layers, MessageSquare, ShieldCheck } from "lucide-react";
+import { ArrowRight, CheckCircle2, HelpCircle, Layers, MessageSquare, Plus, ShieldCheck } from "lucide-react";
 
 import { AppShell } from "@/components/shell/app-shell";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { AlertBanner } from "@/components/ui/toast";
 
@@ -41,6 +42,27 @@ interface User {
   role: string;
 }
 
+interface Doubt {
+  id: string;
+  authorId: string;
+  title: string;
+  body: string;
+  urgency: "CURIOUS" | "ASSIGNMENT_STUCK" | "PROJECT_BLOCKED" | "EXAM_PREP";
+  status: "OPEN" | "RESOLVED" | "CLOSED";
+  answerCount: number;
+  acceptedAnswerId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  author: {
+    id: string;
+    email: string;
+    fullName: string;
+    department: string;
+    avatarUrl?: string | null;
+  };
+  skills: Array<{ id: string; name: string; slug: string }>;
+}
+
 export default function HomePage() {
   const router = useRouter();
 
@@ -50,6 +72,13 @@ export default function HomePage() {
   const [skills, setSkills] = React.useState<UserSkill[]>([]);
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const [togglingAvailability, setTogglingAvailability] = React.useState(false);
+
+  // Doubts Feed State
+  const [doubts, setDoubts] = React.useState<Doubt[]>([]);
+  const [loadingDoubts, setLoadingDoubts] = React.useState(true);
+  const [filterStatus, setFilterStatus] = React.useState<string>("ALL");
+  const [filterUrgency, setFilterUrgency] = React.useState<string>("ALL");
+  const [filterSkill, setFilterSkill] = React.useState<string>("ALL");
 
   // Load session & user data
   React.useEffect(() => {
@@ -82,6 +111,39 @@ export default function HomePage() {
     loadData();
   }, [router]);
 
+  // Load Doubts Feed
+  React.useEffect(() => {
+    let ignore = false;
+
+    async function loadDoubts() {
+      if (!user || user.status !== "ACTIVE") return;
+      try {
+        const params = new URLSearchParams();
+        if (filterStatus !== "ALL") params.set("status", filterStatus);
+        if (filterUrgency !== "ALL") params.set("urgency", filterUrgency);
+        if (filterSkill !== "ALL") params.set("skill", filterSkill);
+
+        const res = await fetch(`/api/doubts?${params.toString()}`);
+        if (res.ok && !ignore) {
+          const json = await res.json();
+          setDoubts(json?.data?.doubts || []);
+        }
+      } catch {
+        // Keep existing feed state on error
+      } finally {
+        if (!ignore) {
+          setLoadingDoubts(false);
+        }
+      }
+    }
+
+    loadDoubts();
+
+    return () => {
+      ignore = true;
+    };
+  }, [user, filterStatus, filterUrgency, filterSkill]);
+
   const handleLogout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
@@ -96,7 +158,6 @@ export default function HomePage() {
     setTogglingAvailability(true);
     const prevAvailable = profile.helpAvailable;
 
-    // Optimistic UI update
     setProfile((prev) => (prev ? { ...prev, helpAvailable: checked } : null));
 
     try {
@@ -107,7 +168,6 @@ export default function HomePage() {
       });
 
       if (!res.ok) {
-        // Revert on error
         setProfile((prev) => (prev ? { ...prev, helpAvailable: prevAvailable } : null));
       }
     } catch {
@@ -149,6 +209,29 @@ export default function HomePage() {
 
   const displayName = profile?.fullName || user?.email.split("@")[0] || "Student";
 
+  const getUrgencyBadge = (urgency: string) => {
+    switch (urgency) {
+      case "ASSIGNMENT_STUCK":
+        return <Badge variant="warning">Assignment Stuck</Badge>;
+      case "PROJECT_BLOCKED":
+        return <Badge variant="danger">Project Blocked</Badge>;
+      case "EXAM_PREP":
+        return <Badge variant="accent">Exam Prep</Badge>;
+      case "CURIOUS":
+      default:
+        return <Badge variant="primary">Just Curious</Badge>;
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    } catch {
+      return dateStr;
+    }
+  };
+
   return (
     <AppShell user={user} profile={profile} onLogout={handleLogout}>
       <div className="space-y-8">
@@ -172,6 +255,12 @@ export default function HomePage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Button asChild size="lg">
+              <Link href="/doubts/new">
+                <Plus className="size-4 mr-1.5" />
+                Ask a Doubt
+              </Link>
+            </Button>
             <Button asChild variant="outline">
               <Link href="/profile">Edit Profile</Link>
             </Button>
@@ -251,11 +340,6 @@ export default function HomePage() {
                       ? "You appear in peer mentor suggestions."
                       : "You are currently marked as unavailable."}
                   </p>
-                  {profile?.helpStatus && (
-                    <p className="text-xs font-medium text-[color:var(--color-primary)] mt-1">
-                      Status: &quot;{profile.helpStatus}&quot;
-                    </p>
-                  )}
                 </div>
                 <Switch
                   checked={profile?.helpAvailable ?? true}
@@ -289,39 +373,183 @@ export default function HomePage() {
                 </p>
               </div>
 
-              <Button className="w-full h-11 text-base font-semibold">
-                <span className="flex items-center gap-2">
-                  Ask a Doubt
-                  <ArrowRight className="size-4" />
-                </span>
+              <Button asChild className="w-full h-11 text-base font-semibold">
+                <Link href="/doubts/new">
+                  <span className="flex items-center gap-2">
+                    Ask a Doubt
+                    <ArrowRight className="size-4" />
+                  </span>
+                </Link>
               </Button>
             </CardContent>
           </Card>
         </div>
 
-        {/* Incoming Loop Surfaces (Phase 2 Containers) */}
-        <section className="space-y-4 pt-4 border-t border-[color:var(--color-border)]/60">
-          <div className="flex items-center justify-between">
+        {/* Live Campus Doubts Feed (Phase 2) */}
+        <section className="space-y-6 pt-4 border-t border-[color:var(--color-border)]/60">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Layers className="size-5 text-[color:var(--color-primary)]" />
               <h2 className="text-xl font-bold tracking-tight text-[color:var(--color-text)]">
                 Campus Doubts Feed
               </h2>
             </div>
-            <Badge variant="outline">Phase 2 Container</Badge>
+
+            <Button asChild size="sm">
+              <Link href="/doubts/new">
+                <Plus className="size-4 mr-1" />
+                Ask a Doubt
+              </Link>
+            </Button>
           </div>
 
-          <Card className="p-8 text-center space-y-3 bg-[color:var(--color-surface-muted)]/30 border-dashed">
-            <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-white border border-[color:var(--color-border)] text-[color:var(--color-text-muted)]">
-              <MessageSquare className="size-6" />
+          {/* Feed Filter Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-4 shadow-sm">
+            {/* Status Pills */}
+            <div className="flex items-center gap-1.5">
+              {["ALL", "OPEN", "RESOLVED"].map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => setFilterStatus(status)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    filterStatus === status
+                      ? "bg-[color:var(--color-primary)] text-white shadow-sm"
+                      : "bg-[color:var(--color-surface-muted)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)]"
+                  }`}
+                >
+                  {status === "ALL" ? "All Doubts" : status}
+                </button>
+              ))}
             </div>
-            <h3 className="text-base font-semibold text-[color:var(--color-text)]">
-              No Open Doubts Yet
-            </h3>
-            <p className="text-sm text-[color:var(--color-text-muted)] max-w-md mx-auto">
-              Your profile is verified and active! The Q&A doubt loop functionality will unlock in Phase 2.
-            </p>
-          </Card>
+
+            {/* Urgency and Skill Dropdowns */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2 text-xs text-[color:var(--color-text-muted)]">
+                <span>Urgency:</span>
+                <Select
+                  value={filterUrgency}
+                  onChange={(e) => setFilterUrgency(e.target.value)}
+                  className="h-8 text-xs font-medium w-36"
+                >
+                  <option value="ALL">All Urgencies</option>
+                  <option value="CURIOUS">Just Curious</option>
+                  <option value="ASSIGNMENT_STUCK">Assignment Stuck</option>
+                  <option value="PROJECT_BLOCKED">Project Blocked</option>
+                  <option value="EXAM_PREP">Exam Prep</option>
+                </Select>
+              </div>
+
+              {skills.length > 0 && (
+                <div className="flex items-center gap-2 text-xs text-[color:var(--color-text-muted)]">
+                  <span>Skill Tag:</span>
+                  <Select
+                    value={filterSkill}
+                    onChange={(e) => setFilterSkill(e.target.value)}
+                    className="h-8 text-xs font-medium w-36"
+                  >
+                    <option value="ALL">All Skills</option>
+                    {skills.map((s) => (
+                      <option key={s.id || s.slug} value={s.name}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Feed Content */}
+          {loadingDoubts ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((n) => (
+                <Card key={n} className="p-6 space-y-3 animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-3/4" />
+                  <div className="h-3 bg-gray-200 rounded w-1/2" />
+                </Card>
+              ))}
+            </div>
+          ) : doubts.length === 0 ? (
+            <Card className="p-8 text-center space-y-3 bg-[color:var(--color-surface-muted)]/30 border-dashed">
+              <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-white border border-[color:var(--color-border)] text-[color:var(--color-text-muted)]">
+                <MessageSquare className="size-6" />
+              </div>
+              <h3 className="text-base font-semibold text-[color:var(--color-text)]">
+                No Doubts Found
+              </h3>
+              <p className="text-sm text-[color:var(--color-text-muted)] max-w-md mx-auto">
+                {filterStatus !== "ALL" || filterUrgency !== "ALL" || filterSkill !== "ALL"
+                  ? "No campus doubts match your selected filters. Try adjusting your filters."
+                  : "No open doubts have been posted yet. Be the first to ask!"}
+              </p>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/doubts/new">Ask a Doubt Now</Link>
+              </Button>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {doubts.map((d) => (
+                <Card key={d.id} className="p-6 space-y-4 hover:border-[color:var(--color-primary)]/40 transition-all shadow-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {d.status === "RESOLVED" ? (
+                        <Badge variant="success" className="text-[10px] py-0.5 px-2 flex items-center gap-1">
+                          <CheckCircle2 className="size-3" />
+                          RESOLVED
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] py-0.5 px-2">
+                          OPEN
+                        </Badge>
+                      )}
+                      {getUrgencyBadge(d.urgency)}
+                    </div>
+
+                    <span className="text-xs text-[color:var(--color-text-muted)]">
+                      {formatDate(d.createdAt)}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-bold text-[color:var(--color-text)] hover:text-[color:var(--color-primary)] transition-colors">
+                      <Link href={`/doubts/${d.id}`}>{d.title}</Link>
+                    </h3>
+                    <p className="text-sm text-[color:var(--color-text-muted)] line-clamp-2 leading-relaxed">
+                      {d.body}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-[color:var(--color-border)]/60">
+                    <div className="flex items-center gap-2">
+                      <Avatar name={d.author.fullName} department={d.author.department} src={d.author.avatarUrl} size="sm" />
+                      <span className="text-xs font-semibold text-[color:var(--color-text)]">
+                        {d.author.fullName}
+                      </span>
+                      <span className="text-xs text-[color:var(--color-text-muted)]">
+                        • {d.author.department || "Student"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap gap-1.5">
+                        {d.skills.map((s) => (
+                          <Badge key={s.id} variant="skill" className="text-[10px] py-0.5 px-2">
+                            {s.name}
+                          </Badge>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-1 text-xs font-medium text-[color:var(--color-text-muted)]">
+                        <MessageSquare className="size-3.5" />
+                        <span>{d.answerCount} answers</span>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </AppShell>

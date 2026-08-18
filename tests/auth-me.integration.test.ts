@@ -73,11 +73,45 @@ describe("GET /api/auth/me (Integration - Real SQLite)", () => {
       collegeEmailVerified: true,
       role: "STUDENT",
       status: "ACTIVE",
+      profile: null,
+      userSkills: [],
     });
 
     expect(json.data.user).not.toHaveProperty("passwordHash");
     expect(json.data).not.toHaveProperty("tokenHash");
     expect(json.data).not.toHaveProperty("rawToken");
+  });
+
+  it("returns profile and userSkills records from SQLite when present", async () => {
+    const email = "mewithprofile@college.edu";
+    const passwordHash = await hashPassword("password123");
+
+    const user = await prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        status: "ACTIVE",
+        profile: {
+          create: {
+            fullName: "Integration Student",
+            department: "Computer Science",
+            bio: "Integration test bio",
+          },
+        },
+      },
+    });
+
+    const { rawToken } = await createSession(user.id);
+    const response = await GET(createRequestWithCookie(rawToken));
+
+    expect(response.status).toBe(200);
+    const json = await response.json();
+
+    expect(json.data.user.profile).toMatchObject({
+      fullName: "Integration Student",
+      department: "Computer Science",
+      bio: "Integration test bio",
+    });
   });
 
   it("returns 401 UNAAUTHENTICATED for an invalid session token", async () => {

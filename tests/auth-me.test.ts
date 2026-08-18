@@ -1,11 +1,29 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockFindValidSession, mockCreateSession } = vi.hoisted(() => ({
+const {
+  mockFindValidSession,
+  mockCreateSession,
+  mockProfileFindUnique,
+  mockUserSkillFindMany,
+} = vi.hoisted(() => ({
   mockFindValidSession: vi.fn(),
   mockCreateSession: vi.fn(),
+  mockProfileFindUnique: vi.fn(),
+  mockUserSkillFindMany: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
+
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    profile: {
+      findUnique: mockProfileFindUnique,
+    },
+    userSkill: {
+      findMany: mockUserSkillFindMany,
+    },
+  },
+}));
 
 vi.mock("@/lib/session", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/session")>();
@@ -54,9 +72,11 @@ function fakeSession(overrides: Record<string, unknown> = {}) {
 describe("GET /api/auth/me (Unit Tests)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockProfileFindUnique.mockResolvedValue(null);
+    mockUserSkillFindMany.mockResolvedValue([]);
   });
 
-  it("returns 200 and safe user payload when valid session cookie is provided", async () => {
+  it("returns 200, safe user payload, profile, and userSkills when valid session cookie is provided", async () => {
     const session = fakeSession();
     mockFindValidSession.mockResolvedValue(session);
 
@@ -72,6 +92,8 @@ describe("GET /api/auth/me (Unit Tests)", () => {
       role: "STUDENT",
       status: "ACTIVE",
       createdAt: "2026-01-01T00:00:00.000Z",
+      profile: null,
+      userSkills: [],
     });
 
     expect(mockFindValidSession).toHaveBeenCalledWith("valid-raw-token");

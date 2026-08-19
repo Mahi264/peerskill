@@ -156,46 +156,44 @@ Rather than proceeding with a gamified reputation system, development will focus
   - At least 3 skills
 - **Progressive Setup:** Move availability and privacy configurations to optional progressive setup rather than blocking entry into the application.
 
-### 3. Authentication & Trust Refinement
+### 3. Authentication & Trust Architecture (Approved: Institutional Google OAuth)
 
-PeerSkill is a private, single-college network. Proving ownership of the institutional email address is fundamental to the product's trust model. College-domain validation alone (checking that the email ends in a college domain) is NOT sufficient to prove the registering user actually owns that email.
+PeerSkill is a private, single-college network for Madhav Institute of Technology & Science (MITS). Institutional Google OAuth / OpenID Connect (OIDC) is approved as the **PRIMARY and ONLY** authentication mechanism for MITS student accounts.
 
-#### Email Ownership Verification
-- After registration, a verification email must be sent to the claimed college email address.
-- The user must confirm ownership by clicking a verification link or entering a code.
-- Until email ownership is verified, the account should not be considered trusted or eligible for full product activation.
+#### Approved Student Domain & Scope
+- **Approved Student Domain:** `@mitsgwl.ac.in` (strictly enforced during OAuth callback via ID token `hd` claim and email domain validation).
+- **Faculty/Staff Domain:** `@mitsgwalior.in` (Faculty access remains out of initial product scope).
 
-#### Password Recovery
-- **Forgot Password:** A user who has forgotten their password must be able to request a secure password reset.
-- **Secure Reset Flow:** Password reset must use a time-limited, single-use token sent to the verified email address.
-- **Lockout Prevention:** Without password recovery, a registered email address could be permanently locked if someone else registered it first. Password reset resolves this by tying recovery to email ownership.
-
-#### Intended Account Lifecycle (Future)
-The current lifecycle is:
+#### Approved Account Lifecycle
 ```
-REGISTERED (PENDING) → Profile + 3 Skills → ACTIVE
+Sign in with MITS Google account (@mitsgwl.ac.in)
+           ↓
+Google-authenticated verified institutional identity
+           ↓
+Existing PeerSkill account OR Create PENDING account
+           ↓
+Low-Friction Onboarding (Name + Department + 3 Skills)
+           ↓
+ACTIVE
+           ↓
+/home (Campus Doubt Feed)
 ```
-The intended future lifecycle is:
-```
-REGISTERED → EMAIL VERIFIED → Profile + 3 Skills → ACTIVE
-```
-Do NOT implement this lifecycle change yet. It must be designed and approved before implementation.
 
-#### Authentication Roadmap
-- **Required Refinement (Next Priority):**
-  - Email ownership verification (send/confirm verification email)
-  - Password reset (forgot password → secure token → new password)
-- **Future Consideration (Not Committed):**
-  - OAuth / college SSO integration
-  - OAuth and SSO are a future product decision and are NOT required or committed at this time.
+#### Authentication Architecture & Security Rules
+- **Identity Layer:** Google OAuth 2.0 / OpenID Connect (OIDC) authenticates institutional student identity.
+- **Application Session Management:** PeerSkill continues using its existing local HTTP-only `peerskill_session` cookie and SQLite `Session` model (`tokenHash`) for application session persistence and revocation.
+- **No Local Passwords:** PeerSkill does **NOT** store local passwords.
+- **No Custom Verification Tokens:** PeerSkill does **NOT** use custom local email verification tokens or verification links.
+- **No Custom Password-Reset Tokens:** PeerSkill does **NOT** use custom local password reset tokens, forgot-password endpoints, or reset forms. Account recovery is delegated entirely to the institution's Google Workspace IT administration.
+- **OAuth Callback Security:** The OAuth callback must validate PKCE code verifiers, state parameters (CSRF protection), ID token signatures (Google JWKS), expiration (`exp`), audience (`aud`), issuer (`iss`), and strictly enforce `hd === "mitsgwl.ac.in"`.
+- **Future SSO Integration:** Future integration with Microsoft Azure AD / Office 365, Google Workspace Enterprise SSO, or SAML/OIDC providers remains future scope.
 
-#### Security & Trust Principle
-Every user on PeerSkill must be a verified member of the college community. The trust model depends on:
-1. College-domain email format validation (already implemented in Phase 1).
-2. Email ownership verification (planned refinement — not yet implemented).
-3. The combination of both establishes that the user is a real member of the institution.
-
-*Note: All authentication and trust refinements must be designed and approved before implementation. Do not implement without explicit approval.*
+#### Obsoleted Functionality (Reclassified)
+Under this approved architecture, the following previously planned local features are **OBSOLETE** and removed from scope:
+- Local email/password signup and login
+- Local email ownership verification tokens and verification pages
+- Local forgot-password and password-reset token flows
+- Local development email logger service for verification/reset links
 
 ---
 
@@ -270,9 +268,9 @@ Features:
 
 # Core Product Loop
 
-signup (college email)
+Sign in with MITS Google account (@mitsgwl.ac.in)
   ↓
-verify email ownership (planned — not yet implemented)
+Google-authenticated institutional identity
   ↓
 academic profile + 3+ skills (low-friction onboarding)
   ↓

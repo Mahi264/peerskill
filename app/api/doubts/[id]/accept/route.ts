@@ -71,6 +71,18 @@ export async function POST(
     return forbiddenResponse("Only the doubt author can accept an answer.");
   }
 
+  if (doubt.status === "CLOSED") {
+    return NextResponse.json(
+      {
+        error: {
+          code: "DOUBT_CLOSED",
+          message: "Cannot accept an answer for a closed doubt.",
+        },
+      },
+      { status: 400 },
+    );
+  }
+
   let bodyData: Record<string, unknown>;
   try {
     bodyData = await request.json();

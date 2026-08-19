@@ -161,5 +161,91 @@ describe("Answers & Accept API (Integration - Real SQLite)", () => {
     expect(detailJson.data.doubt.acceptedAnswerId).toBe(answerId);
     expect(detailJson.data.doubt.answers[0].isAccepted).toBe(true);
     expect(detailJson.data.doubt.answers[0].author.fullName).toBe("Priya Helper");
+
+    // 5. Answering a RESOLVED doubt is STILL allowed
+    const secondAnswerRes = await POST_ANSWER(
+      createRequest(
+        `http://localhost:3000/api/doubts/${doubtId}/answers`,
+        "POST",
+        {
+          body: "Another valid approach is to use ReentrantLock with tryLock timeout.",
+        },
+        helperToken,
+      ),
+      { params: Promise.resolve({ id: doubtId }) },
+    );
+    expect(secondAnswerRes.status).toBe(201);
+    const secondAnswerJson = await secondAnswerRes.json();
+    const secondAnswerId = secondAnswerJson.data.answer.id;
+
+    // 6. Asker accepts the second answer (changing the accepted answer later)
+    const changeAcceptRes = await POST_ACCEPT(
+      createRequest(
+        `http://localhost:3000/api/doubts/${doubtId}/accept`,
+        "POST",
+        {
+          answerId: secondAnswerId,
+        },
+        askerToken,
+      ),
+      { params: Promise.resolve({ id: doubtId }) },
+    );
+    expect(changeAcceptRes.status).toBe(200);
+    const changeAcceptJson = await changeAcceptRes.json();
+    expect(changeAcceptJson.data.doubt.acceptedAnswerId).toBe(secondAnswerId);
+    expect(changeAcceptJson.data.answer.isAccepted).toBe(true);
+
+    // 7. Author answers their own doubt
+    const selfAnswerRes = await POST_ANSWER(
+      createRequest(
+        `http://localhost:3000/api/doubts/${doubtId}/answers`,
+        "POST",
+        {
+          body: "I also confirmed that lock ordering resolved the issue in my codebase.",
+        },
+        askerToken,
+      ),
+      { params: Promise.resolve({ id: doubtId }) },
+    );
+    expect(selfAnswerRes.status).toBe(201);
+    const selfAnswerJson = await selfAnswerRes.json();
+    const selfAnswerId = selfAnswerJson.data.answer.id;
+
+    // 8. Author accepts their own answer
+    const selfAcceptRes = await POST_ACCEPT(
+      createRequest(
+        `http://localhost:3000/api/doubts/${doubtId}/accept`,
+        "POST",
+        {
+          answerId: selfAnswerId,
+        },
+        askerToken,
+      ),
+      { params: Promise.resolve({ id: doubtId }) },
+    );
+    expect(selfAcceptRes.status).toBe(200);
+    const selfAcceptJson = await selfAcceptRes.json();
+    expect(selfAcceptJson.data.doubt.acceptedAnswerId).toBe(selfAnswerId);
+
+    // 9. Reject answers on CLOSED doubts
+    await prisma.doubt.update({
+      where: { id: doubtId },
+      data: { status: "CLOSED" },
+    });
+
+    const closedAnswerRes = await POST_ANSWER(
+      createRequest(
+        `http://localhost:3000/api/doubts/${doubtId}/answers`,
+        "POST",
+        {
+          body: "Trying to answer a closed doubt should be rejected.",
+        },
+        helperToken,
+      ),
+      { params: Promise.resolve({ id: doubtId }) },
+    );
+    expect(closedAnswerRes.status).toBe(400);
+    const closedAnswerJson = await closedAnswerRes.json();
+    expect(closedAnswerJson.error.code).toBe("DOUBT_CLOSED");
   });
 });

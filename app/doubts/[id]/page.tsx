@@ -460,7 +460,7 @@ export default function DoubtDetailPage() {
                     </div>
 
                     {/* Author Accept Action */}
-                    {isAuthor && !ans.isAccepted && !isResolved && (
+                    {isAuthor && !ans.isAccepted && doubt.status !== "CLOSED" && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -482,7 +482,7 @@ export default function DoubtDetailPage() {
         </div>
 
         {/* Answer Form Card */}
-        {user?.status === "ACTIVE" && !isResolved && (
+        {user?.status === "ACTIVE" && doubt.status !== "CLOSED" && (
           <Card className="p-6 space-y-4 border-[color:var(--color-primary)]/20 shadow-sm">
             <CardHeader className="p-0">
               <CardTitle className="text-lg font-bold text-[color:var(--color-text)]">
@@ -522,7 +522,7 @@ export default function DoubtDetailPage() {
         {isResolved && (
           <div className="rounded-xl border border-[color:var(--color-success)]/30 bg-emerald-50/40 p-4 text-center text-xs text-[color:var(--color-text-muted)]">
             <p className="font-semibold text-[color:var(--color-success)]">
-              This doubt has been resolved and archived in the campus knowledge repository.
+              ✓ An answer has been accepted for this doubt. Additional answers are still welcome!
             </p>
           </div>
         )}

@@ -2,13 +2,83 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowRight, CheckCircle2, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { HelpCircle, Network, ShieldCheck, Sparkles, Users } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertBanner } from "@/components/ui/toast";
 
-export default function LandingPage() {
+function SignInContent() {
+  const searchParams = useSearchParams();
+  const errorCode = searchParams.get("error");
+
+  let errorMsg: string | null = null;
+  if (errorCode === "INVALID_COLLEGE_DOMAIN") {
+    errorMsg = "Only official MITS Gwalior student accounts using @mitsgwl.ac.in are allowed.";
+  } else if (errorCode === "INVALID_NONCE") {
+    errorMsg = "Authentication security validation failed. Please try signing in again.";
+  } else if (errorCode) {
+    errorMsg = "Authentication failed. Please try signing in with your MITS Google account again.";
+  }
+
+  return (
+    <Card className="w-full max-w-[420px] bg-white border-[color:var(--color-border)] shadow-[var(--shadow-md)] rounded-[var(--radius-lg)]">
+      <CardHeader className="text-center space-y-1.5 pb-2">
+        <div className="mx-auto flex size-10 items-center justify-center rounded-full bg-[color:var(--color-primary)]/10 text-[color:var(--color-primary)] mb-1">
+          <ShieldCheck className="size-5" />
+        </div>
+        <CardTitle className="text-2xl font-bold tracking-tight text-[#17201D]">
+          Sign in to PeerSkill
+        </CardTitle>
+        <CardDescription className="text-sm text-[color:var(--color-text-muted)]">
+          Sign up with your official MITS student Google account.
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="space-y-6 pt-4">
+        {errorMsg && <AlertBanner variant="error" message={errorMsg} />}
+
+        <div className="space-y-4">
+          <a
+            href="/api/auth/google"
+            className="w-full h-12 px-4 rounded-[var(--radius-md)] bg-white hover:bg-[color:var(--color-surface-muted)] text-[#17201D] font-semibold text-base border border-[#DCE3DF] shadow-sm flex items-center justify-center gap-3 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-primary)] focus-visible:ring-offset-2 no-underline cursor-pointer"
+            role="link"
+          >
+            <svg className="size-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+              />
+            </svg>
+            <span className="text-[#17201D] font-semibold">Sign in with Google</span>
+          </a>
+
+          <p className="text-center text-xs text-[color:var(--color-text-muted)]">
+            Use your <strong className="font-semibold text-[color:var(--color-text)]">@mitsgwl.ac.in</strong> Google account.
+          </p>
+        </div>
+
+        <div className="pt-2 text-center text-xs text-[color:var(--color-text-muted)] border-t border-[color:var(--color-border)]/60">
+          Only official MITS Gwalior student accounts are permitted.
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function RootSignInPage() {
   const router = useRouter();
   const [checkingAuth, setCheckingAuth] = React.useState(true);
 
@@ -29,7 +99,7 @@ export default function LandingPage() {
           }
         }
       } catch {
-        // Ignore network error on public landing
+        // Ignore network error on sign-in landing
       } finally {
         setCheckingAuth(false);
       }
@@ -50,174 +120,115 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[color:var(--color-bg)] text-[color:var(--color-text)] flex flex-col">
-      {/* Top Header */}
-      <header className="w-full max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-[color:var(--color-primary)] text-white font-bold text-xl shadow-sm">
+    <div className="min-h-screen bg-[color:var(--color-bg)] text-[color:var(--color-text)] flex flex-col justify-between">
+      {/* Top Institutional Header */}
+      <header className="w-full max-w-6xl mx-auto px-6 pt-6 pb-2 flex items-center justify-between">
+        <Link href="/" className="flex items-center gap-2.5">
+          <div className="flex size-9 items-center justify-center rounded-xl bg-[color:var(--color-primary)] text-white font-bold text-lg shadow-sm">
             P
           </div>
-          <div>
-            <span className="text-xl font-bold tracking-tight text-[color:var(--color-text)]">
-              PeerSkill
-            </span>
-            <span className="hidden sm:inline-block ml-2 rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-surface-muted)] px-2.5 py-0.5 text-xs font-semibold text-[color:var(--color-primary)]">
-              Your Campus Network
-            </span>
-          </div>
-        </div>
+          <span className="text-xl font-bold tracking-tight text-[color:var(--color-text)]">
+            PeerSkill
+          </span>
+        </Link>
 
-        <div className="flex items-center gap-3">
-          <Button asChild variant="ghost">
-            <Link href="/login">Log in</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/register">
-              Sign up
-              <ArrowRight className="size-4" />
-            </Link>
-          </Button>
-        </div>
+        <span className="rounded-full border border-[color:var(--color-border)] bg-white px-3 py-1 text-xs font-semibold text-[color:var(--color-primary)] shadow-sm">
+          MITS Gwalior Network
+        </span>
       </header>
 
-      {/* Main Hero Section */}
-      <main className="flex-1 max-w-6xl mx-auto px-6 py-12 lg:py-20 flex flex-col gap-16">
-        <section className="grid gap-12 lg:grid-cols-[1.3fr_0.9fr] items-center">
-          <div className="space-y-6">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-3.5 py-1 text-xs font-semibold text-[color:var(--color-primary)] shadow-sm">
-              <ShieldCheck className="size-4 text-[color:var(--color-success)]" />
-              Verified Single-College Skill Graph
-            </div>
-
+      {/* Main Minimal Two-Column Section */}
+      <main className="flex-1 w-full max-w-6xl mx-auto px-6 py-8 sm:py-12 flex items-center">
+        <div className="w-full grid gap-12 lg:grid-cols-12 items-center">
+          {/* Left Column: Intro & Institutional Capabilities */}
+          <div className="lg:col-span-7 space-y-8">
             <div className="space-y-4">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-[color:var(--color-text)] leading-[1.1]">
-                Find the skill next door.
+              <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--color-border)] bg-white px-3.5 py-1 text-xs font-semibold text-[color:var(--color-primary)] shadow-sm">
+                <ShieldCheck className="size-4 text-[color:var(--color-success)]" />
+                Single-College Skill & Doubt Network
+              </div>
+
+              <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight text-[color:var(--color-text)] leading-[1.15]">
+                Your campus, <span className="text-[color:var(--color-primary)]">searchable.</span>
               </h1>
-              <p className="text-lg sm:text-xl leading-relaxed text-[color:var(--color-text-muted)] max-w-2xl">
-                Your campus, searchable. Ask peers, build skills, and get unstuck on coursework
-                without feeling awkward.
+
+              <p className="text-base sm:text-lg leading-relaxed text-[color:var(--color-text-muted)] max-w-xl">
+                PeerSkill is the private skill-sharing and doubt-solving network for MITS students.
+                Ask peers, exchange course expertise, and reuse verified solutions across departments.
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4 pt-2">
-              <Button asChild size="lg">
-                <Link href="/register">
-                  Get Started with College Email
-                  <ArrowRight className="size-4" />
-                </Link>
-              </Button>
-              <Button asChild variant="outline" size="lg">
-                <Link href="/login">Already registered? Log in</Link>
-              </Button>
+            {/* 3 Concise Value Items */}
+            <div className="space-y-4 pt-2">
+              <div className="flex items-start gap-3.5">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[color:var(--color-primary)]/10 text-[color:var(--color-primary)] mt-0.5">
+                  <HelpCircle className="size-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-[color:var(--color-text)]">
+                    1. Ask campus doubts
+                  </h2>
+                  <p className="text-xs text-[color:var(--color-text-muted)] leading-normal">
+                    Get unstuck on coursework, lab assignments, and exam preparation from classmates.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3.5">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[color:var(--color-primary)]/10 text-[color:var(--color-primary)] mt-0.5">
+                  <Users className="size-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-[color:var(--color-text)]">
+                    2. Find peers by skill
+                  </h2>
+                  <p className="text-xs text-[color:var(--color-text-muted)] leading-normal">
+                    Index your skills and connect with peers who excel in specific languages and tools.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3.5">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[color:var(--color-primary)]/10 text-[color:var(--color-primary)] mt-0.5">
+                  <Sparkles className="size-4" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-[color:var(--color-text)]">
+                    3. Reuse solved campus knowledge
+                  </h2>
+                  <p className="text-xs text-[color:var(--color-text-muted)] leading-normal">
+                    Access accepted peer answers backed by skill-specific reputation points.
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center gap-6 pt-4 text-xs font-medium text-[color:var(--color-text-muted)] border-t border-[color:var(--color-border)]/60">
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="size-4 text-[color:var(--color-success)]" />
-                College Email Verification
-              </span>
-              <span className="flex items-center gap-1.5">
-                <CheckCircle2 className="size-4 text-[color:var(--color-success)]" />
-                Skill-Specific Reputation
+            {/* Subtle Skill Node Motif */}
+            <div className="hidden sm:flex items-center gap-3 pt-2">
+              <div className="inline-flex items-center gap-2 rounded-lg border border-[color:var(--color-border)] bg-white px-3 py-1.5 text-xs font-semibold text-[color:var(--color-text-muted)] shadow-sm">
+                <Network className="size-3.5 text-[color:var(--color-primary)]" />
+                <span>Verified Peer Skill Graph</span>
+              </div>
+              <div className="h-px w-12 bg-[color:var(--color-border)]" />
+              <span className="text-xs text-[color:var(--color-text-muted)]">
+                Restricted to @mitsgwl.ac.in
               </span>
             </div>
           </div>
 
-          {/* Signature Skill Node Visual Preview Card */}
-          <Card className="p-8 space-y-6 bg-gradient-to-b from-white to-[color:var(--color-surface-muted)]/50 border-[color:var(--color-border)] relative overflow-hidden">
-            <div className="absolute -top-12 -right-12 size-36 rounded-full bg-[color:var(--color-accent)]/15 blur-2xl pointer-events-none" />
+          {/* Right Column: Institutional Sign-In Card */}
+          <div className="lg:col-span-5 flex justify-center lg:justify-end">
+            <React.Suspense fallback={<div className="text-center p-4 text-sm">Loading...</div>}>
+              <SignInContent />
+            </React.Suspense>
+          </div>
 
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-[color:var(--color-text-muted)]">
-                Skill Match Preview
-              </span>
-              <span className="rounded-full bg-[color:var(--color-primary)]/10 px-2.5 py-0.5 text-xs font-semibold text-[color:var(--color-primary)]">
-                Campus Active
-              </span>
-            </div>
-
-            {/* Simulated Skill Nodes */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 rounded-xl border border-[color:var(--color-border)] bg-white p-3.5 shadow-sm">
-                <div className="flex size-9 items-center justify-center rounded-lg bg-[color:var(--color-primary)] text-white font-bold text-xs">
-                  AM
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-[color:var(--color-text)]">
-                    Aarav Mehta
-                  </p>
-                  <p className="text-xs text-[color:var(--color-text-muted)]">
-                    Computer Science • 3rd Year
-                  </p>
-                </div>
-                <span className="rounded-md border border-[color:var(--color-skill-blue)]/20 bg-[color:var(--color-skill-blue)]/10 px-2 py-0.5 text-xs font-semibold text-[color:var(--color-skill-blue)]">
-                  React Mentor
-                </span>
-              </div>
-
-              {/* Node Connector Line */}
-              <div className="flex justify-center my-1">
-                <div className="h-6 w-0.5 border-l-2 border-dashed border-[color:var(--color-primary)]/40" />
-              </div>
-
-              <div className="rounded-xl border border-[color:var(--color-border)] bg-white p-4 space-y-2 shadow-sm">
-                <div className="flex items-center justify-between text-xs text-[color:var(--color-text-muted)]">
-                  <span className="font-semibold text-[color:var(--color-primary)]">
-                    Assignment Stuck
-                  </span>
-                  <span>Urgent</span>
-                </div>
-                <p className="text-sm font-medium text-[color:var(--color-text)] leading-snug">
-                  &quot;How do I optimize re-renders in nested React component state?&quot;
-                </p>
-              </div>
-            </div>
-          </Card>
-        </section>
-
-        {/* 3 Pillar Feature Cards */}
-        <section className="grid gap-6 md:grid-cols-3">
-          <Card className="hover:-translate-y-0.5">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-[color:var(--color-primary)]/10 text-[color:var(--color-primary)] mb-4">
-              <Users className="size-5" />
-            </div>
-            <h3 className="text-lg font-semibold text-[color:var(--color-text)] mb-2">
-              Find Peers by Skill
-            </h3>
-            <p className="text-sm text-[color:var(--color-text-muted)] leading-relaxed">
-              Index your skills and find classmates who know the exact tools, languages, and concepts you are working on.
-            </p>
-          </Card>
-
-          <Card className="hover:-translate-y-0.5">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-[color:var(--color-primary)]/10 text-[color:var(--color-primary)] mb-4">
-              <Sparkles className="size-5" />
-            </div>
-            <h3 className="text-lg font-semibold text-[color:var(--color-text)] mb-2">
-              Coursework Answers
-            </h3>
-            <p className="text-sm text-[color:var(--color-text-muted)] leading-relaxed">
-              Get answers tailored to your college courses, lab assignments, and professor expectations.
-            </p>
-          </Card>
-
-          <Card className="hover:-translate-y-0.5">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-[color:var(--color-primary)]/10 text-[color:var(--color-primary)] mb-4">
-              <ShieldCheck className="size-5" />
-            </div>
-            <h3 className="text-lg font-semibold text-[color:var(--color-text)] mb-2">
-              Skill Reputation
-            </h3>
-            <p className="text-sm text-[color:var(--color-text-muted)] leading-relaxed">
-              Earn visible skill-specific reputation points whenever your answers are accepted by peers.
-            </p>
-          </Card>
-        </section>
+        </div>
       </main>
 
       {/* Footer */}
-      <footer className="w-full border-t border-[color:var(--color-border)] py-8 text-center text-xs text-[color:var(--color-text-muted)]">
-        <p>PeerSkill • Verified Single-College Skill Graph</p>
+      <footer className="w-full border-t border-[color:var(--color-border)]/70 py-6 text-center text-xs text-[color:var(--color-text-muted)]">
+        <p>PeerSkill • Institutional Skill & Doubt Network for MITS Gwalior</p>
       </footer>
     </div>
   );

@@ -70,7 +70,7 @@ export default function NewDoubtPage() {
       try {
         const res = await fetch("/api/auth/me");
         if (!res.ok) {
-          router.replace("/login");
+          router.replace("/");
           return;
         }
         const json = await res.json();

@@ -71,7 +71,7 @@ export default function OnboardingPage() {
       try {
         const res = await fetch("/api/auth/me");
         if (!res.ok) {
-          router.replace("/login");
+          router.replace("/");
           return;
         }
 

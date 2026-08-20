@@ -124,7 +124,18 @@ export default function NewDoubtPage() {
       return;
     }
 
-    if (skills.length < 1) {
+    let currentSkills = [...skills];
+    const pendingCustom = customSkill.trim();
+    if (
+      pendingCustom &&
+      !currentSkills.some((s) => s.toLowerCase() === pendingCustom.toLowerCase())
+    ) {
+      currentSkills = [...currentSkills, pendingCustom];
+      setSkills(currentSkills);
+      setCustomSkill("");
+    }
+
+    if (currentSkills.length < 1) {
       setErrorMsg("Please select at least one skill tag.");
       return;
     }
@@ -140,7 +151,7 @@ export default function NewDoubtPage() {
           title: title.trim(),
           body: body.trim(),
           urgency,
-          skills,
+          skills: currentSkills,
         }),
       });
 

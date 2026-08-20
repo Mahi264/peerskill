@@ -374,7 +374,10 @@ export default function DoubtDetailPage() {
           </div>
 
           {/* Author info snippet */}
-          <div className="flex items-center gap-3 rounded-xl border border-[color:var(--color-border)]/60 bg-[color:var(--color-surface-muted)]/40 p-3.5">
+          <Link
+            href={`/users/${doubt.authorId || doubt.author.id}`}
+            className="flex items-center gap-3 rounded-xl border border-[color:var(--color-border)]/60 bg-[color:var(--color-surface-muted)]/40 p-3.5 hover:border-[color:var(--color-primary)]/40 transition-colors group"
+          >
             <Avatar
               name={doubt.author.fullName}
               department={doubt.author.department}
@@ -382,14 +385,14 @@ export default function DoubtDetailPage() {
               size="md"
             />
             <div>
-              <p className="text-sm font-semibold text-[color:var(--color-text)]">
+              <p className="text-sm font-semibold text-[color:var(--color-text)] group-hover:text-[color:var(--color-primary)] group-hover:underline">
                 {doubt.author.fullName}
               </p>
               <p className="text-xs text-[color:var(--color-text-muted)]">
                 {doubt.author.department || "Campus Student"}
               </p>
             </div>
-          </div>
+          </Link>
 
           {/* Body Text */}
           <div className="pt-2 border-t border-[color:var(--color-border)]/60">
@@ -435,7 +438,10 @@ export default function DoubtDetailPage() {
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-3">
+                    <Link
+                      href={`/users/${ans.authorId || ans.author.id}`}
+                      className="flex items-center gap-3 hover:underline group"
+                    >
                       <Avatar
                         name={ans.author.fullName}
                         department={ans.author.department}
@@ -444,7 +450,7 @@ export default function DoubtDetailPage() {
                       />
                       <div>
                         <div className="flex items-center gap-2">
-                          <p className="text-sm font-bold text-[color:var(--color-text)]">
+                          <p className="text-sm font-bold text-[color:var(--color-text)] group-hover:text-[color:var(--color-primary)]">
                             {ans.author.fullName}
                           </p>
                           {ans.isAccepted && (
@@ -457,7 +463,7 @@ export default function DoubtDetailPage() {
                           {ans.author.department || "Campus Student"} • {formatDate(ans.createdAt)}
                         </p>
                       </div>
-                    </div>
+                    </Link>
 
                     {/* Author Accept Action */}
                     {isAuthor && !ans.isAccepted && doubt.status !== "CLOSED" && (

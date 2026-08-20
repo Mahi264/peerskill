@@ -442,15 +442,19 @@ export default function HomePage() {
 
                       {/* Author & Skill Footer Bar */}
                       <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-[color:var(--color-border)]/60">
-                        <div className="flex items-center gap-2">
+                        <Link
+                          href={`/users/${d.authorId || d.author.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center gap-2 hover:underline group cursor-pointer"
+                        >
                           <Avatar name={d.author.fullName} department={d.author.department} src={d.author.avatarUrl} size="sm" />
-                          <span className="text-xs font-semibold text-[color:var(--color-text)]">
+                          <span className="text-xs font-semibold text-[color:var(--color-text)] group-hover:text-[color:var(--color-primary)]">
                             {d.author.fullName}
                           </span>
                           <span className="text-xs text-[color:var(--color-text-muted)]">
                             • {d.author.department || "Student"}
                           </span>
-                        </div>
+                        </Link>
 
                         <div className="flex flex-wrap items-center gap-3">
                           <div className="flex flex-wrap gap-1.5">

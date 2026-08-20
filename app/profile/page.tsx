@@ -228,7 +228,22 @@ export default function ProfilePage() {
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    if (skills.length < 3) {
+    let currentSkills = [...skills];
+    const pendingCustom = customSkillInput.trim();
+    if (
+      pendingCustom &&
+      !currentSkills.some((s) => s.name.toLowerCase() === pendingCustom.toLowerCase())
+    ) {
+      const newSkill: { name: string; level: LevelType } = {
+        name: pendingCustom,
+        level: "BEGINNER",
+      };
+      currentSkills = [...currentSkills, newSkill];
+      setSkills(currentSkills);
+      setCustomSkillInput("");
+    }
+
+    if (currentSkills.length < 3) {
       setErrorMsg("At least 3 skills are required.");
       return;
     }
@@ -240,7 +255,7 @@ export default function ProfilePage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          skills: skills.map((s) => ({ name: s.name, level: s.level })),
+          skills: currentSkills.map((s) => ({ name: s.name, level: s.level })),
         }),
       });
 

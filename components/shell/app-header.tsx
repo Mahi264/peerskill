@@ -1,5 +1,6 @@
 import * as React from "react";
 import Link from "next/link";
+import { Search } from "lucide-react";
 
 import { Avatar } from "@/components/ui/avatar";
 
@@ -20,8 +21,8 @@ export function AppHeader({ user, profile }: AppHeaderProps) {
   const department = profile?.department || null;
 
   return (
-    <header className="flex md:hidden h-14 items-center justify-between border-b border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-4 sticky top-0 z-30">
-      <Link href="/home" className="flex items-center gap-2">
+    <header className="flex md:hidden h-14 items-center justify-between border-b border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-4 sticky top-0 z-30 gap-3">
+      <Link href="/home" className="flex items-center gap-2 shrink-0">
         <div className="flex size-7 items-center justify-center rounded-lg bg-[color:var(--color-primary)] text-white font-bold text-sm">
           P
         </div>
@@ -30,9 +31,19 @@ export function AppHeader({ user, profile }: AppHeaderProps) {
         </span>
       </Link>
 
-      <Link href="/profile">
-        <Avatar name={displayName} department={department} src={profile?.avatarUrl} size="sm" />
-      </Link>
+      <div className="flex items-center gap-3">
+        <Link
+          href="/search"
+          className="flex size-9 items-center justify-center rounded-lg text-[color:var(--color-text-muted)] hover:bg-[color:var(--color-surface-muted)] hover:text-[color:var(--color-text)] transition-colors"
+          aria-label="Open search"
+        >
+          <Search className="size-5" />
+        </Link>
+
+        <Link href="/profile">
+          <Avatar name={displayName} department={department} src={profile?.avatarUrl} size="sm" />
+        </Link>
+      </div>
     </header>
   );
 }

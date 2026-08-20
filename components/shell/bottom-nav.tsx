@@ -15,7 +15,13 @@ export function BottomNav() {
   ];
 
   return (
-    <nav className="flex md:hidden fixed bottom-0 left-0 right-0 h-16 border-t border-[color:var(--color-border)] bg-[color:var(--color-surface)] z-30 px-6 justify-around items-center shadow-[0_-4px_12px_rgba(23,32,29,0.04)]">
+    <nav
+      aria-label="Mobile Navigation"
+      className="flex md:hidden fixed bottom-0 left-0 right-0 h-16 border-t border-[color:var(--color-border)] bg-[color:var(--color-surface)] z-30 px-6 justify-around items-center shadow-[0_-4px_12px_rgba(23,32,29,0.04)]"
+      style={{
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+      }}
+    >
       {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = pathname === item.href;

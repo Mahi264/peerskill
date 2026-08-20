@@ -50,27 +50,25 @@ Definition of Done:
 # Phase 1 — Authentication & Student Onboarding (Completed)
 
 Goal:
-A student can create an account and complete their profile.
+A student can authenticate with their institutional identity and complete their academic profile.
 
-Features:
-- Signup
-- Login
-- Logout
-- Basic local authentication
-- Student profile
-- Department
-- Branch
-- Year
-- Section
-- Bio
-- Avatar/initials
-- At least 3 skills
-- Skill level per skill
-- Available to help
-- Privacy settings
+Authentication Architecture (Institutional Google OAuth / OIDC):
+- **Institutional Domain Only:** Strictly restricted to `@mitsgwl.ac.in` students.
+- **Single Entry Point:** `/` is the unified landing & sign-in experience (public `/login` and `/register` removed).
+- **Identity & Ownership:** Google OAuth / OIDC verifies institutional email ownership cryptographically via Google JWKS.
+- **Application Session:** PeerSkill manages its own secure, HTTP-only `peerskill_session` cookie backed by SQLite `Session` records.
+- **No Local Passwords or Reset Tokens:** No local password storage, forgot-password forms, or custom email verification tokens. Account recovery delegates to MITS Google Workspace IT.
+
+Onboarding Features:
+- Student academic profile (Full Name, Department, Branch, Year, Section, Bio)
+- Avatar generation with initials
+- At least 3 skills with proficiency levels (BEGINNER, INTERMEDIATE, ADVANCED, MENTOR)
+- Custom skill entry & persistence
+- Availability & privacy controls (Help Available status, contact visibility)
+- Atomic transition to ACTIVE status once onboarding criteria met
 
 Definition of Done:
-- A new student can create an account, complete their profile, add at least 3 skills, and reach Home.
+- A new student can sign in with their `@mitsgwl.ac.in` Google account, complete onboarding profile & skills, and reach `/home`.
 
 ---
 
@@ -80,15 +78,18 @@ Goal:
 Prove the central PeerSkill doubt-solving loop.
 
 Features:
-- Create doubt (title, description, skill selection, urgency)
+- Create doubt (title, body, skill selection, urgency, custom skill tags)
 - Doubt feed (campus doubt cards with urgency, status, skill tags, answer count)
 - Skill, urgency, and status filtering
-- Doubt detail view
+- Doubt detail view (`/doubts/[id]`)
 - Submit answer
 - Answer list
 - Accept answer
 - Resolved doubt state & reusable campus knowledge
 - Author deletion of eligible doubts (author-only, OPEN status, 0 answers)
+- Custom skill persistence across profiles and doubts
+- Feed-first Home UX (`/home`)
+- Low-friction onboarding
 
 Q&A Behavior Rules:
 - OPEN doubts: answers allowed.
@@ -205,19 +206,59 @@ Under this approved architecture, the following previously planned local feature
 - **Skill-Specific Reputation:** No point accumulation per skill.
 - **Leaderboards:** No per-skill or institutional leaderboards, rankings, or leaderboard UI.
 
-### Deferred Future Phases (Preserved Boundaries):
+---
 
-# Phase 3 (Future) — Search & Knowledge Discovery
+# Phase 3A — Knowledge Discovery (Completed)
 
 Goal:
-Allow students to search campus knowledge, skills, and peers.
+Allow students to search campus knowledge to answer: "Has another MITS student already asked this or solved this?"
 
 Features:
-- Search people, skills, and doubts
-- Department, year, availability, and skill-level filters
-- Suggested helpers and mentor profiles
+- Global authenticated search entry in navigation header
+- Dedicated `/search` route with URL-driven, bookmarkable query and filter state
+- Knowledge search across doubt titles, descriptions, skill tags, and accepted answers
+- OPEN / RESOLVED / ALL status filters
+- Urgency and skill tag filters
+- Relevance ordering with resolution/accepted-answer boost and recency weighting
+- Accepted-answer signals and quick solution preview on search cards
+- Comprehensive empty, initial, loading, and error states
+- Local-first SQLite/Prisma implementation with server-side validation
+- Full test coverage (unit, integration, and frontend page tests)
+
+Definition of Done:
+- A student can search doubts from any page, filter by status/urgency/skill, view resolved/accepted solutions, and navigate directly to doubt details.
 
 ---
+
+# Phase 3B — Peer Discovery (Next Planned Slice)
+
+Goal:
+Help a student find a relevant MITS peer who can help with a specific skill or problem: "I need someone on campus who can help me with X."
+
+Planned Initial Scope:
+- Search peers by name
+- Search peers by skill
+- Department filter
+- Availability filter ("Available to help")
+- Clear student profile / result cards
+- Simple helper discovery
+
+Explicitly NOT in Scope (Preserved Boundaries):
+- Reputation ranking
+- Voting
+- Leaderboards
+- "Top helper" rankings
+- Mentor marketplace behavior
+- Connection requests (Phase 4)
+- Messaging (Phase 5)
+- Social graphs
+
+Focus:
+Pure utility and discovery without gamification or complex social mechanics.
+
+---
+
+### Deferred Future Phases (Preserved Boundaries):
 
 # Phase 4 — Connections
 

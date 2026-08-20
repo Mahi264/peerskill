@@ -250,6 +250,15 @@ export default function ProfilePage() {
         return;
       }
 
+      if (json?.data?.skills && Array.isArray(json.data.skills)) {
+        setSkills(
+          json.data.skills.map((us: { name?: string; skill?: { name: string }; level: LevelType }) => ({
+            name: us.name || us.skill?.name || "Skill",
+            level: us.level,
+          })),
+        );
+      }
+
       setSuccessMsg("Skills and proficiencies saved successfully.");
     } catch {
       setErrorMsg("Network error while saving skills.");

@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockGetAuthenticatedUser, mockProfileUpsert, mockProfileFindUnique, mockSkillFindUnique, mockSkillUpsert, mockUserSkillDeleteMany, mockUserSkillCreateMany, mockUserSkillFindMany, mockUserUpdate, mockTransaction } = vi.hoisted(
+const { mockGetAuthenticatedUser, mockProfileUpsert, mockProfileFindUnique, mockSkillFindUnique, mockSkillFindFirst, mockSkillCreate, mockSkillUpsert, mockUserSkillDeleteMany, mockUserSkillCreateMany, mockUserSkillFindMany, mockUserUpdate, mockTransaction } = vi.hoisted(
   () => ({
     mockGetAuthenticatedUser: vi.fn(),
     mockProfileUpsert: vi.fn(),
     mockProfileFindUnique: vi.fn(),
     mockSkillFindUnique: vi.fn(),
+    mockSkillFindFirst: vi.fn(),
+    mockSkillCreate: vi.fn(),
     mockSkillUpsert: vi.fn(),
     mockUserSkillDeleteMany: vi.fn(),
     mockUserSkillCreateMany: vi.fn(),
@@ -29,6 +31,8 @@ vi.mock("@/lib/prisma", () => ({
     },
     skill: {
       findUnique: mockSkillFindUnique,
+      findFirst: mockSkillFindFirst,
+      create: mockSkillCreate,
       upsert: mockSkillUpsert,
     },
     userSkill: {
@@ -231,10 +235,13 @@ describe("PUT /api/profiles/me/skills (Unit Tests)", () => {
     const user = fakeUser({ status: "PENDING" });
     mockGetAuthenticatedUser.mockResolvedValue(user);
 
-    mockSkillUpsert
-      .mockResolvedValueOnce({ id: "skill-1", name: "React", slug: "react" })
-      .mockResolvedValueOnce({ id: "skill-2", name: "Node.js", slug: "node-js" })
-      .mockResolvedValueOnce({ id: "skill-3", name: "TypeScript", slug: "typescript" });
+    mockSkillFindFirst.mockImplementation(async ({ where }: { where?: { OR?: Array<{ slug?: string }> } }) => {
+      const slug = where?.OR?.[0]?.slug;
+      if (slug === "react") return { id: "skill-1", name: "React", slug: "react" };
+      if (slug === "node-js") return { id: "skill-2", name: "Node.js", slug: "node-js" };
+      if (slug === "typescript") return { id: "skill-3", name: "TypeScript", slug: "typescript" };
+      return null;
+    });
 
     mockTransaction.mockResolvedValue([{}, {}]);
     mockProfileFindUnique.mockResolvedValue({ userId: user.id, fullName: "Aarav" });

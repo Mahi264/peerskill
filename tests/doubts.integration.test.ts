@@ -213,4 +213,49 @@ describe("Doubts API (Integration - Real SQLite)", () => {
     const skillCountAfter = await prisma.doubtSkill.count({ where: { doubtId } });
     expect(skillCountAfter).toBe(0);
   });
+
+  it("persists both existing skill (C++) and custom skill (C) on doubt creation", async () => {
+    const user = await prisma.user.create({
+      data: {
+        email: "customskilluser@college.edu",
+        passwordHash: "hash",
+        status: "ACTIVE",
+      },
+    });
+    const { rawToken } = await createSession(user.id);
+
+    const postRes = await POST(
+      createRequest(
+        "http://localhost:3000/api/doubts",
+        "POST",
+        {
+          title: "Pointers in C vs References in C++",
+          body: "What are the exact memory management differences between C and C++?",
+          urgency: "ASSIGNMENT_STUCK",
+          skills: ["C++", "C"],
+        },
+        rawToken,
+      ),
+    );
+
+    expect(postRes.status).toBe(201);
+    const json = await postRes.json();
+    const doubt = json.data.doubt;
+
+    expect(doubt.skills).toHaveLength(2);
+    const skillNames = doubt.skills.map((s: { name: string }) => s.name);
+    expect(skillNames).toContain("C++");
+    expect(skillNames).toContain("C");
+
+    // Verify detail fetch GET /api/doubts/[id]
+    const getRes = await GET_DETAIL(
+      createRequest(`http://localhost:3000/api/doubts/${doubt.id}`),
+      { params: Promise.resolve({ id: doubt.id }) },
+    );
+
+    const getJson = await getRes.json();
+    const fetchedSkills = getJson.data.doubt.skills.map((s: { name: string }) => s.name);
+    expect(fetchedSkills).toContain("C++");
+    expect(fetchedSkills).toContain("C");
+  });
 });

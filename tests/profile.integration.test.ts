@@ -208,6 +208,72 @@ describe("Profile & Skills API (Integration - Real SQLite)", () => {
     expect(skillNames).not.toContain("React");
   });
 
+  it("persists 3 existing skills + 1 custom skill (C) as 4 distinct skills without overwriting C++", async () => {
+    // 1. Create Profile
+    await PATCH(
+      createRequestWithCookie(
+        "http://localhost:3000/api/profiles/me",
+        "PATCH",
+        { fullName: "Aarav Mehta", department: "Computer Science" },
+        rawToken,
+      ),
+    );
+
+    // 2. Add 3 initial skills including C++
+    await PUT_SKILLS(
+      createRequestWithCookie(
+        "http://localhost:3000/api/profiles/me/skills",
+        "PUT",
+        {
+          skills: [
+            { name: "C++", level: "ADVANCED" },
+            { name: "Python", level: "INTERMEDIATE" },
+            { name: "JavaScript", level: "BEGINNER" },
+          ],
+        },
+        rawToken,
+      ),
+    );
+
+    // 3. Add custom skill "C" with level "BEGINNER", keeping the 3 existing skills
+    const putResponse = await PUT_SKILLS(
+      createRequestWithCookie(
+        "http://localhost:3000/api/profiles/me/skills",
+        "PUT",
+        {
+          skills: [
+            { name: "C++", level: "ADVANCED" },
+            { name: "Python", level: "INTERMEDIATE" },
+            { name: "JavaScript", level: "BEGINNER" },
+            { name: "C", level: "BEGINNER" },
+          ],
+        },
+        rawToken,
+      ),
+    );
+
+    expect(putResponse.status).toBe(200);
+    const putJson = await putResponse.json();
+    expect(putJson.data.skills).toHaveLength(4);
+
+    // 4. Verify directly in SQLite database
+    const dbUserSkills = await prisma.userSkill.findMany({
+      where: { userId },
+      include: { skill: true },
+    });
+
+    expect(dbUserSkills).toHaveLength(4);
+    const skillNames = dbUserSkills.map((us) => us.skill.name);
+    expect(skillNames).toContain("C++");
+    expect(skillNames).toContain("C");
+    expect(skillNames).toContain("Python");
+    expect(skillNames).toContain("JavaScript");
+
+    // Verify proficiency for custom skill C
+    const cSkill = dbUserSkills.find((us) => us.skill.name === "C");
+    expect(cSkill?.level).toBe("BEGINNER");
+  });
+
   it("rejects unauthenticated requests and does not modify database", async () => {
     const response = await PATCH(
       createRequestWithCookie(

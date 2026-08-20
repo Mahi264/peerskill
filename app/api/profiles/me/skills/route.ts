@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getAuthenticatedUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { generateSkillSlug } from "@/lib/skills";
 import { updateSkillsSchema } from "@/lib/validations/profile";
 
 function unauthenticatedResponse() {
@@ -14,14 +15,6 @@ function unauthenticatedResponse() {
     },
     { status: 401 },
   );
-}
-
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
 }
 
 export async function PUT(request: Request) {
@@ -81,7 +74,7 @@ export async function PUT(request: Request) {
   const resolvedSkills: Array<{ id: string; name: string; slug: string; level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "MENTOR" }> = [];
 
   for (const item of inputSkills) {
-    let skillRecord;
+    let skillRecord = null;
 
     if (item.skillId) {
       skillRecord = await prisma.skill.findUnique({
@@ -91,18 +84,30 @@ export async function PUT(request: Request) {
 
     if (!skillRecord && item.name) {
       const cleanName = item.name.trim();
-      const slug = generateSlug(cleanName);
+      const slug = generateSkillSlug(cleanName);
 
-      skillRecord = await prisma.skill.upsert({
-        where: { slug },
-        create: {
-          name: cleanName,
-          slug,
-        },
-        update: {
-          name: cleanName,
+      skillRecord = await prisma.skill.findFirst({
+        where: {
+          OR: [{ slug }, { name: { equals: cleanName } }],
         },
       });
+
+      if (!skillRecord) {
+        try {
+          skillRecord = await prisma.skill.create({
+            data: {
+              name: cleanName,
+              slug,
+            },
+          });
+        } catch {
+          skillRecord = await prisma.skill.findFirst({
+            where: {
+              OR: [{ slug }, { name: { equals: cleanName } }],
+            },
+          });
+        }
+      }
     }
 
     if (!skillRecord) {
@@ -110,19 +115,21 @@ export async function PUT(request: Request) {
         {
           error: {
             code: "SKILL_NOT_FOUND",
-            message: `Skill with id ${item.skillId} was not found.`,
+            message: `Skill with id ${item.skillId || item.name} was not found.`,
           },
         },
         { status: 422 },
       );
     }
 
-    resolvedSkills.push({
-      id: skillRecord.id,
-      name: skillRecord.name,
-      slug: skillRecord.slug,
-      level: item.level,
-    });
+    if (!resolvedSkills.some((s) => s.id === skillRecord!.id)) {
+      resolvedSkills.push({
+        id: skillRecord.id,
+        name: skillRecord.name,
+        slug: skillRecord.slug,
+        level: item.level,
+      });
+    }
   }
 
   // Replace user's UserSkill records in a transaction

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { getAuthenticatedUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { generateSkillSlug } from "@/lib/skills";
 
 const VALID_URGENCIES = ["CURIOUS", "ASSIGNMENT_STUCK", "PROJECT_BLOCKED", "EXAM_PREP"] as const;
 type DoubtUrgencyType = (typeof VALID_URGENCIES)[number];
@@ -243,7 +244,7 @@ export async function POST(request: Request) {
   for (const input of skillInputs) {
     if (typeof input !== "string" || !input.trim()) continue;
     const cleanInput = input.trim();
-    const slug = cleanInput.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const slug = generateSkillSlug(cleanInput);
 
     let existingSkill = await prisma.skill.findFirst({
       where: {
@@ -252,15 +253,23 @@ export async function POST(request: Request) {
     });
 
     if (!existingSkill) {
-      existingSkill = await prisma.skill.create({
-        data: {
-          name: cleanInput,
-          slug: slug || `skill-${Date.now()}`,
-        },
-      });
+      try {
+        existingSkill = await prisma.skill.create({
+          data: {
+            name: cleanInput,
+            slug,
+          },
+        });
+      } catch {
+        existingSkill = await prisma.skill.findFirst({
+          where: {
+            OR: [{ id: cleanInput }, { slug }, { name: { equals: cleanInput } }],
+          },
+        });
+      }
     }
 
-    if (!resolvedSkillIds.includes(existingSkill.id)) {
+    if (existingSkill && !resolvedSkillIds.includes(existingSkill.id)) {
       resolvedSkillIds.push(existingSkill.id);
     }
   }

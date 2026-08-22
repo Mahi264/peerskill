@@ -453,16 +453,23 @@ export default function ProfilePage() {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5 sm:col-span-2">
-                    <label htmlFor="fullName" className="text-sm font-medium text-[color:var(--color-text)]">
-                      Full Name
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label htmlFor="fullName" className="text-sm font-medium text-[color:var(--color-text)]">
+                        Full Name
+                      </label>
+                      <span className="text-[11px] font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        Verified via Google Workspace
+                      </span>
+                    </div>
                     <Input
                       id="fullName"
                       value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      disabled={saving}
-                      required
+                      disabled
+                      className="bg-[color:var(--color-surface-muted)] cursor-not-allowed opacity-90 font-medium"
                     />
+                    <p className="text-[11px] text-[color:var(--color-text-muted)]">
+                      Your full name is linked to your institutional MITS Google account and cannot be modified here.
+                    </p>
                   </div>
 
                   <div className="space-y-1.5">

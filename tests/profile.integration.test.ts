@@ -344,5 +344,40 @@ describe("Profile & Skills API (Integration - Real SQLite)", () => {
     });
     expect(dbUser?.status).toBe("SUSPENDED");
   });
+
+  it("preserves Google-verified fullName when client sends profile update", async () => {
+    // Set initial Google-verified profile
+    await prisma.profile.create({
+      data: {
+        userId,
+        fullName: "Verified Google Name",
+        department: "",
+      },
+    });
+
+    const patchResponse = await PATCH(
+      createRequestWithCookie(
+        "http://localhost:3000/api/profiles/me",
+        "PATCH",
+        {
+          fullName: "Attacker Malicious Name",
+          department: "Electrical Engineering",
+          branch: "EE",
+        },
+        rawToken,
+      ),
+    );
+
+    expect(patchResponse.status).toBe(200);
+
+    const dbProfile = await prisma.profile.findUnique({
+      where: { userId },
+    });
+
+    // Verified Google Name MUST NOT be overridden by client
+    expect(dbProfile?.fullName).toBe("Verified Google Name");
+    expect(dbProfile?.department).toBe("Electrical Engineering");
+    expect(dbProfile?.branch).toBe("EE");
+  });
 });
 

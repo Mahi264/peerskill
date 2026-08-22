@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { env } from "@/lib/env";
+import { normalizeMitsDisplayName, parseMitsEmail } from "@/lib/mits-email";
 import {
   GOOGLE_CODE_VERIFIER_COOKIE,
   GOOGLE_NONCE_COOKIE,
@@ -111,9 +112,20 @@ export async function GET(request: Request) {
   const cleanEmail = payload.email.trim().toLowerCase();
   const googleId = payload.sub;
 
+  const rawGoogleName =
+    typeof payload.name === "string" && payload.name.trim()
+      ? payload.name.trim()
+      : null;
+  const googleName = rawGoogleName ? normalizeMitsDisplayName(rawGoogleName) : null;
+
+  const parsedEmail = parseMitsEmail(cleanEmail);
+
   let user = await prisma.user.findFirst({
     where: {
       OR: [{ email: cleanEmail }, { googleId }],
+    },
+    include: {
+      profile: true,
     },
   });
 
@@ -125,7 +137,43 @@ export async function GET(request: Request) {
           googleId: user.googleId ?? googleId,
           collegeEmailVerified: true,
         },
+        include: {
+          profile: true,
+        },
       });
+    }
+
+    // Synchronize Google-derived identity without overwriting student-configured metadata
+    if (!user.profile) {
+      await prisma.profile.create({
+        data: {
+          userId: user.id,
+          fullName: googleName || cleanEmail.split("@")[0],
+          avatarUrl: null,
+          branch: parsedEmail.branchName || null,
+          department: "",
+        },
+      });
+    } else {
+      const profileUpdates: {
+        fullName?: string;
+        avatarUrl?: string | null;
+        branch?: string | null;
+      } = {};
+
+      if (googleName && user.profile.fullName !== googleName) {
+        profileUpdates.fullName = googleName;
+      }
+      if (!user.profile.branch && parsedEmail.branchName) {
+        profileUpdates.branch = parsedEmail.branchName;
+      }
+
+      if (Object.keys(profileUpdates).length > 0) {
+        await prisma.profile.update({
+          where: { userId: user.id },
+          data: profileUpdates,
+        });
+      }
     }
   } else {
     user = await prisma.user.create({
@@ -135,6 +183,17 @@ export async function GET(request: Request) {
         collegeEmailVerified: true,
         status: "PENDING",
         role: "STUDENT",
+        profile: {
+          create: {
+            fullName: googleName || cleanEmail.split("@")[0],
+            avatarUrl: null,
+            branch: parsedEmail.branchName || null,
+            department: "",
+          },
+        },
+      },
+      include: {
+        profile: true,
       },
     });
   }

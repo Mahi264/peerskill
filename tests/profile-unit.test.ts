@@ -92,19 +92,19 @@ describe("PATCH /api/profiles/me (Unit Tests)", () => {
     expect(json.error.code).toBe("UNAUTHENTICATED");
   });
 
-  it("returns 422 VALIDATION_ERROR when missing required fields", async () => {
+  it("returns 422 VALIDATION_ERROR when missing required department", async () => {
     mockGetAuthenticatedUser.mockResolvedValue(fakeUser());
 
     const response = await PATCH(
       createRequest("http://localhost:3000/api/profiles/me", "PATCH", {
-        department: "Computer Science",
+        branch: "Computer Science & Engineering (CSE)",
       }),
     );
 
     expect(response.status).toBe(422);
     const json = await response.json();
     expect(json.error.code).toBe("VALIDATION_ERROR");
-    expect(json.error.details).toHaveProperty("fullName");
+    expect(json.error.details).toHaveProperty("department");
   });
 
   it("returns 403 ACCOUNT_SUSPENDED when user status is SUSPENDED", async () => {

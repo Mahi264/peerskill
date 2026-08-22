@@ -68,7 +68,7 @@ export async function PATCH(request: Request) {
   }
 
   const {
-    fullName,
+    fullName: requestedFullName,
     department,
     branch,
     graduationYear,
@@ -77,26 +77,37 @@ export async function PATCH(request: Request) {
     avatarUrl,
   } = result.data;
 
+  const existingProfile = await prisma.profile.findUnique({
+    where: { userId: user.id },
+  });
+
+  const effectiveFullName =
+    existingProfile?.fullName ||
+    (requestedFullName && requestedFullName.trim() ? requestedFullName.trim() : user.email.split("@")[0]);
+
+  const effectiveAvatarUrl =
+    avatarUrl !== undefined ? avatarUrl || null : existingProfile?.avatarUrl || null;
+
   const profile = await prisma.profile.upsert({
     where: { userId: user.id },
     create: {
       userId: user.id,
-      fullName,
+      fullName: effectiveFullName,
       department,
       branch: branch || null,
       graduationYear: graduationYear || null,
       section: section || null,
       bio: bio || null,
-      avatarUrl: avatarUrl || null,
+      avatarUrl: effectiveAvatarUrl,
     },
     update: {
-      fullName,
+      fullName: existingProfile?.fullName || effectiveFullName,
       department,
       branch: branch || null,
       graduationYear: graduationYear || null,
       section: section || null,
       bio: bio || null,
-      avatarUrl: avatarUrl || null,
+      avatarUrl: effectiveAvatarUrl,
     },
   });
 

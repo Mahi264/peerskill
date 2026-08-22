@@ -363,4 +363,106 @@ describe("Google OAuth 2.0 / OIDC Authentication Integration (SQLite)", () => {
     const sessionCount = await prisma.session.count({ where: { userId: user.id } });
     expect(sessionCount).toBe(0);
   });
+
+  it("persists Google fullName (normalized from institutional roll name), avatarUrl, and auto-detected MITS branch on initial registration", async () => {
+    const state = "identity-state-1";
+    const codeVerifier = "identity-verifier-1";
+    const nonce = "identity-nonce-1";
+
+    mockSignedGoogleTokenResponse({
+      iss: "https://accounts.google.com",
+      aud: "test-google-client-id",
+      sub: "google-sub-identity-1",
+      email: "24cs10mo80@mitsgwl.ac.in",
+      email_verified: true,
+      hd: "mitsgwl.ac.in",
+      name: "BTCS24O1080 MOHIT SHARMA",
+      picture: "https://lh3.googleusercontent.com/a/test-avatar",
+      nonce,
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      iat: Math.floor(Date.now() / 1000),
+    });
+
+    const req = new Request(`http://localhost:3000/api/auth/callback/google?code=valid-code&state=${state}`, {
+      headers: {
+        cookie: `${GOOGLE_OAUTH_STATE_COOKIE}=${state}; ${GOOGLE_CODE_VERIFIER_COOKIE}=${codeVerifier}; ${GOOGLE_NONCE_COOKIE}=${nonce}`,
+      },
+    });
+
+    const res = await GET_CALLBACK(req);
+    expect([302, 307]).toContain(res.status);
+
+    const user = await prisma.user.findUnique({
+      where: { email: "24cs10mo80@mitsgwl.ac.in" },
+      include: { profile: true },
+    });
+
+    expect(user).not.toBeNull();
+    expect(user?.profile).not.toBeNull();
+    // Roll number prefix BTCS24O1080 must be stripped
+    expect(user?.profile?.fullName).toBe("MOHIT SHARMA");
+    // Google OIDC picture claim is NOT persisted as avatarUrl
+    expect(user?.profile?.avatarUrl).toBeNull();
+    expect(user?.profile?.branch).toBe("Computer Science & Engineering (CSE)");
+  });
+
+  it("safely synchronizes Google identity for returning user without overwriting student-configured metadata", async () => {
+    const existingUser = await prisma.user.create({
+      data: {
+        email: "24it3dam3@mitsgwl.ac.in",
+        googleId: "google-sub-returning-1",
+        collegeEmailVerified: true,
+        status: "ACTIVE",
+        profile: {
+          create: {
+            fullName: "Old Name",
+            avatarUrl: null,
+            department: "Information Technology",
+            bio: "Student passionate about networking",
+            helpAvailable: true,
+          },
+        },
+      },
+      include: { profile: true },
+    });
+
+    const state = "identity-state-2";
+    const codeVerifier = "identity-verifier-2";
+    const nonce = "identity-nonce-2";
+
+    mockSignedGoogleTokenResponse({
+      iss: "https://accounts.google.com",
+      aud: "test-google-client-id",
+      sub: "google-sub-returning-1",
+      email: "24it3dam3@mitsgwl.ac.in",
+      email_verified: true,
+      hd: "mitsgwl.ac.in",
+      name: "BTIT23O1071 AMIT SHARMA",
+      picture: "https://lh3.googleusercontent.com/a/new-avatar",
+      nonce,
+      exp: Math.floor(Date.now() / 1000) + 3600,
+      iat: Math.floor(Date.now() / 1000),
+    });
+
+    const req = new Request(`http://localhost:3000/api/auth/callback/google?code=valid-code&state=${state}`, {
+      headers: {
+        cookie: `${GOOGLE_OAUTH_STATE_COOKIE}=${state}; ${GOOGLE_CODE_VERIFIER_COOKIE}=${codeVerifier}; ${GOOGLE_NONCE_COOKIE}=${nonce}`,
+      },
+    });
+
+    const res = await GET_CALLBACK(req);
+    expect([302, 307]).toContain(res.status);
+
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: existingUser.id },
+      include: { profile: true },
+    });
+
+    // Roll number prefix BTIT23O1071 must be stripped
+    expect(updatedUser?.profile?.fullName).toBe("AMIT SHARMA");
+    // Google OIDC picture claim does NOT overwrite avatarUrl
+    expect(updatedUser?.profile?.avatarUrl).toBeNull();
+    expect(updatedUser?.profile?.department).toBe("Information Technology");
+    expect(updatedUser?.profile?.bio).toBe("Student passionate about networking");
+  });
 });

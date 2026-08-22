@@ -2,14 +2,16 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, Plus, Sparkles, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Plus, ShieldCheck, Sparkles, X } from "lucide-react";
 
+import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { AlertBanner } from "@/components/ui/toast";
+import { normalizeMitsDisplayName, parseMitsEmail } from "@/lib/mits-email";
 
 const DEPARTMENTS = [
   "Computer Science",
@@ -57,9 +59,11 @@ export default function OnboardingPage() {
   // User state
   const [userEmail, setUserEmail] = React.useState("");
 
-  // Step 1 Profile state (Mandatory)
+  // Step 1 Profile state (Institutional Google Identity + Academic Choice)
   const [fullName, setFullName] = React.useState("");
+  const [avatarUrl, setAvatarUrl] = React.useState<string | null>(null);
   const [department, setDepartment] = React.useState(DEPARTMENTS[0]);
+  const [branch, setBranch] = React.useState("");
 
   // Step 2 Skills state (Mandatory 3+ skills, defaults level to INTERMEDIATE)
   const [skills, setSkills] = React.useState<SelectedSkill[]>([]);
@@ -77,7 +81,8 @@ export default function OnboardingPage() {
 
         const json = await res.json();
         const u = json?.data?.user;
-        setUserEmail(u?.email || "");
+        const email = u?.email || "";
+        setUserEmail(email);
 
         // If user is already active, redirect to home
         if (u?.status === "ACTIVE") {
@@ -91,14 +96,32 @@ export default function OnboardingPage() {
           return;
         }
 
+        // Parse verified institutional email for branch and batch
+        const parsed = parseMitsEmail(email);
+
         // Populate existing profile details if returning PENDING user
         let hasStep1Data = false;
         if (u?.profile) {
           if (u.profile.fullName) {
-            setFullName(u.profile.fullName);
+            setFullName(normalizeMitsDisplayName(u.profile.fullName));
+          }
+          if (u.profile.avatarUrl) {
+            setAvatarUrl(u.profile.avatarUrl);
+          }
+          if (u.profile.department) {
+            setDepartment(u.profile.department);
             hasStep1Data = true;
           }
-          if (u.profile.department) setDepartment(u.profile.department);
+          if (u.profile.branch) {
+            setBranch(u.profile.branch);
+          } else if (parsed.branchName) {
+            setBranch(parsed.branchName);
+          }
+        } else {
+          setFullName(normalizeMitsDisplayName(email.split("@")[0]));
+          if (parsed.branchName) {
+            setBranch(parsed.branchName);
+          }
         }
 
         if (u?.userSkills && Array.isArray(u.userSkills) && u.userSkills.length > 0) {
@@ -110,7 +133,7 @@ export default function OnboardingPage() {
           );
         }
 
-        // If user already saved Step 1 profile, automatically advance to Step 2
+        // If user already saved Step 1 profile (department chosen), advance to Step 2
         if (hasStep1Data && u?.status === "PENDING") {
           setStep(2);
         }
@@ -147,15 +170,10 @@ export default function OnboardingPage() {
     );
   };
 
-  // Step 1 Submit: Campus Identity
+  // Step 1 Submit: Campus Identity & Department Selection
   const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-
-    if (!fullName.trim()) {
-      setErrorMsg("Full name is required.");
-      return;
-    }
 
     if (!department) {
       setErrorMsg("Department selection is required.");
@@ -169,8 +187,8 @@ export default function OnboardingPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fullName: fullName.trim(),
           department,
+          branch: branch.trim() || undefined,
         }),
       });
 
@@ -292,63 +310,113 @@ export default function OnboardingPage() {
         {errorMsg && <AlertBanner variant="error" message={errorMsg} />}
 
         {/* STEP 1: Campus Identity */}
-        {step === 1 && (
-          <Card className="p-6 sm:p-8 space-y-6 shadow-sm">
-            <CardHeader className="p-0 border-b border-[color:var(--color-border)]/60 pb-4">
-              <CardTitle className="text-xl">Step 1: Campus Identity</CardTitle>
-              <p className="text-xs text-[color:var(--color-text-muted)] mt-1">
-                Enter your real name and academic department so classmates recognize you.
-              </p>
-            </CardHeader>
+        {step === 1 && (() => {
+          const parsedEmail = parseMitsEmail(userEmail);
+          return (
+            <Card className="p-6 sm:p-8 space-y-6 shadow-sm">
+              <CardHeader className="p-0 border-b border-[color:var(--color-border)]/60 pb-4">
+                <CardTitle className="text-xl">Step 1: Campus Identity</CardTitle>
+                <p className="text-xs text-[color:var(--color-text-muted)] mt-1">
+                  Your identity is verified through your institutional Google account. Confirm your department and program to continue.
+                </p>
+              </CardHeader>
 
-            <CardContent className="p-0 pt-2">
-              <form onSubmit={handleStep1Submit} className="space-y-5">
-                {/* Full Name */}
-                <div className="space-y-1.5">
-                  <label htmlFor="fullName" className="text-sm font-semibold text-[color:var(--color-text)]">
-                    Full Name <span className="text-[color:var(--color-danger)]">*</span>
-                  </label>
-                  <Input
-                    id="fullName"
-                    required
-                    placeholder="e.g. Aarav Sharma"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    disabled={submitting}
-                  />
+              <CardContent className="p-0 pt-2 space-y-5">
+                {/* Verified Identity Card */}
+                <div className="rounded-xl border border-[color:var(--color-border)] bg-[color:var(--color-surface-muted)]/40 p-4 sm:p-5 flex items-start sm:items-center gap-4">
+                  <Avatar name={fullName || userEmail.split("@")[0]} src={avatarUrl} size="lg" />
+                  <div className="space-y-1 flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="text-lg sm:text-xl font-bold text-[color:var(--color-text)] truncate">
+                        {fullName || userEmail.split("@")[0]}
+                      </h2>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-semibold">
+                        <ShieldCheck className="size-3.5" />
+                        Verified via Google
+                      </span>
+                    </div>
+                    <p className="text-xs text-[color:var(--color-text-muted)]">
+                      {userEmail}
+                    </p>
+                  </div>
                 </div>
 
-                {/* Department */}
-                <div className="space-y-1.5">
-                  <label htmlFor="department" className="text-sm font-semibold text-[color:var(--color-text)]">
-                    Department <span className="text-[color:var(--color-danger)]">*</span>
-                  </label>
-                  <Select
-                    id="department"
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    disabled={submitting}
-                  >
-                    {DEPARTMENTS.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-
-                <div className="pt-4 flex justify-end">
-                  <Button type="submit" size="lg" disabled={submitting}>
-                    <span className="flex items-center gap-2">
-                      {submitting ? "Saving..." : "Continue to Skills"}
-                      <ArrowRight className="size-4" />
+                {/* Auto-detected Academic Details Callout */}
+                {(parsedEmail.batchYear || parsedEmail.branchName) && (
+                  <div className="rounded-lg border border-[color:var(--color-primary)]/20 bg-[color:var(--color-surface-muted)]/30 px-4 py-3 space-y-1 text-xs text-[color:var(--color-text)]">
+                    <span className="font-semibold text-[color:var(--color-primary)] uppercase tracking-wider text-[10px] block mb-1">
+                      Detected from your MITS student ID:
                     </span>
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        )}
+                    {parsedEmail.batchYear && (
+                      <p className="flex items-center gap-1.5">
+                        <span className="text-[color:var(--color-text-muted)]">• Admission Batch:</span>
+                        <span className="font-semibold">Class of {parsedEmail.batchYear}</span>
+                      </p>
+                    )}
+                    {parsedEmail.branchName && (
+                      <p className="flex items-center gap-1.5">
+                        <span className="text-[color:var(--color-text-muted)]">• Detected Program:</span>
+                        <span className="font-semibold">{parsedEmail.branchName}</span>
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <form onSubmit={handleStep1Submit} className="space-y-5 pt-2">
+                  {/* Department (Required) */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="department" className="text-sm font-semibold text-[color:var(--color-text)]">
+                      Department <span className="text-[color:var(--color-danger)]">*</span>
+                    </label>
+                    <Select
+                      id="department"
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
+                      disabled={submitting}
+                    >
+                      {DEPARTMENTS.map((dept) => (
+                        <option key={dept} value={dept}>
+                          {dept}
+                        </option>
+                      ))}
+                    </Select>
+                    <p className="text-[11px] text-[color:var(--color-text-muted)]">
+                      Select your primary academic department.
+                    </p>
+                  </div>
+
+                  {/* Branch / Program (Optional / Auto-populated) */}
+                  <div className="space-y-1.5">
+                    <label htmlFor="branch" className="text-sm font-semibold text-[color:var(--color-text)]">
+                      Branch / Program
+                    </label>
+                    <Input
+                      id="branch"
+                      placeholder="e.g. Computer Science & Engineering (CSE)"
+                      value={branch}
+                      onChange={(e) => setBranch(e.target.value)}
+                      disabled={submitting}
+                    />
+                    <p className="text-[11px] text-[color:var(--color-text-muted)]">
+                      {parsedEmail.branchName
+                        ? "Auto-detected from your MITS student email (editable if needed)."
+                        : "Could not be automatically detected from your email. Please select or enter your branch."}
+                    </p>
+                  </div>
+
+                  <div className="pt-4 flex justify-end">
+                    <Button type="submit" size="lg" disabled={submitting}>
+                      <span className="flex items-center gap-2">
+                        {submitting ? "Saving..." : "Continue to Skills"}
+                        <ArrowRight className="size-4" />
+                      </span>
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* STEP 2: Skills & Activation */}
         {step === 2 && (

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertBanner } from "@/components/ui/toast";
+import { AcceptedCheckmarkSVG } from "@/components/ui/motion-illustrations";
 
 interface Author {
   id: string;
@@ -376,7 +377,7 @@ export default function DoubtDetailPage() {
           {/* Author info snippet */}
           <Link
             href={`/users/${doubt.authorId || doubt.author.id}`}
-            className="flex items-center gap-3 rounded-xl border border-[color:var(--color-border)]/60 bg-[color:var(--color-surface-muted)]/40 p-3.5 hover:border-[color:var(--color-primary)]/40 transition-colors group"
+            className="flex items-center gap-3 rounded-xl border border-[color:var(--color-border)]/60 bg-[color:var(--color-surface-muted)]/40 p-3.5 group"
           >
             <Avatar
               name={doubt.author.fullName}
@@ -431,10 +432,10 @@ export default function DoubtDetailPage() {
               {doubt.answers.map((ans) => (
                 <Card
                   key={ans.id}
-                  className={`p-6 space-y-4 transition-all ${
+                  className={`p-6 space-y-4 ${
                     ans.isAccepted
-                      ? "border-[color:var(--color-success)]/40 bg-gradient-to-r from-emerald-50/30 via-white to-white ring-1 ring-[color:var(--color-success)]/20"
-                      : "border-[color:var(--color-border)]"
+                      ? "border-[color:var(--color-success)] bg-gradient-to-r from-emerald-50/50 via-white to-white ring-1 ring-[color:var(--color-success)]/30 shadow-sm"
+                      : "border-[color:var(--color-border)] shadow-xs"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -450,12 +451,13 @@ export default function DoubtDetailPage() {
                       />
                       <div>
                         <div className="flex items-center gap-2">
-                          <p className="text-sm font-bold text-[color:var(--color-text)] group-hover:text-[color:var(--color-primary)]">
+                          <p className="text-sm font-bold text-[color:var(--color-text)] group-hover:text-[color:var(--color-primary)] transition-colors">
                             {ans.author.fullName}
                           </p>
                           {ans.isAccepted && (
-                            <Badge variant="success" className="text-[10px] py-0.5 px-2">
-                              ACCEPTED ANSWER
+                            <Badge variant="success" className="text-[10px] py-0.5 px-2.5 flex items-center gap-1.5 animate-pop-in shadow-xs">
+                              <AcceptedCheckmarkSVG className="size-3.5" />
+                              ACCEPTED SOLUTION
                             </Badge>
                           )}
                         </div>

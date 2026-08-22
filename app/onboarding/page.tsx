@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { AlertBanner } from "@/components/ui/toast";
+import { OnboardingNodeConnectionSVG } from "@/components/ui/motion-illustrations";
 import { normalizeMitsDisplayName, parseMitsEmail } from "@/lib/mits-email";
 
 const DEPARTMENTS = [
@@ -513,7 +514,7 @@ export default function OnboardingPage() {
                       {skills.map((s) => (
                         <div
                           key={s.name}
-                          className="flex items-center justify-between gap-3 p-3 rounded-xl border border-[color:var(--color-border)] bg-white shadow-sm"
+                          className="flex items-center justify-between gap-3 p-3 rounded-xl border border-[color:var(--color-border)] bg-white shadow-xs animate-pop-in transition-surface"
                         >
                           <div className="flex items-center gap-2">
                             <Badge variant="skill">{s.name}</Badge>
@@ -536,7 +537,7 @@ export default function OnboardingPage() {
                               type="button"
                               onClick={() => handleRemoveSkill(s.name)}
                               disabled={submitting}
-                              className="text-[color:var(--color-text-muted)] hover:text-[color:var(--color-danger)] transition-colors p-1"
+                              className="text-[color:var(--color-text-muted)] hover:text-[color:var(--color-danger)] transition-tactile active:scale-90 p-1 cursor-pointer"
                               title="Remove skill"
                             >
                               <X className="size-4" />
@@ -547,6 +548,16 @@ export default function OnboardingPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Approved Whimsical SVG Moment #2: Onboarding Node Connection */}
+                {skills.length >= 3 && (
+                  <div className="py-2 text-center space-y-1 animate-in fade-in duration-300">
+                    <OnboardingNodeConnectionSVG />
+                    <p className="text-[11px] font-medium text-[color:var(--color-text-muted)]">
+                      Connecting your academic identity to the MITS peer graph
+                    </p>
+                  </div>
+                )}
 
                 <div className="pt-4 flex items-center justify-between border-t border-[color:var(--color-border)]/60">
                   <Button

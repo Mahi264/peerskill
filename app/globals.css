@@ -18,6 +18,17 @@
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 14px;
+
+  /* Motion Tokens */
+  --duration-instant: 80ms;
+  --duration-fast: 140ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --duration-delight: 420ms;
+  --ease-standard: cubic-bezier(0.2, 0.0, 0.0, 1.0);
+  --ease-expressive: cubic-bezier(0.16, 1.0, 0.3, 1.0);
+  --ease-exit: cubic-bezier(0.4, 0.0, 1.0, 1.0);
+  --ease-pop: cubic-bezier(0.34, 1.56, 0.64, 1.0);
 }
 
 @theme inline {
@@ -70,4 +81,108 @@
 
 .bg-\[color\:var\(--color-primary\)\] * {
   color: #ffffff !important;
+}
+
+/* Reusable Micro-Interaction Utility Classes */
+.transition-tactile {
+  transition: all var(--duration-fast) var(--ease-standard);
+}
+
+.transition-surface {
+  transition: all var(--duration-normal) var(--ease-expressive);
+}
+
+.press-tactile {
+  transition: transform var(--duration-instant) var(--ease-standard);
+}
+
+.press-tactile:active {
+  transform: scale(0.98) translateY(0.5px);
+}
+
+/* Keyframes for Pure CSS Micro-Animations */
+@keyframes checkmark-draw {
+  from {
+    stroke-dashoffset: 24;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes pop-in {
+  0% {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes node-pulse {
+  0%, 100% {
+    opacity: 0.25;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes path-draw {
+  from {
+    stroke-dashoffset: 120;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-pop-in {
+  animation: pop-in var(--duration-fast) var(--ease-pop) forwards;
+}
+
+.animate-checkmark {
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+  animation: checkmark-draw var(--duration-delight) var(--ease-pop) forwards;
+}
+
+.animate-path-draw {
+  stroke-dasharray: 120;
+  stroke-dashoffset: 120;
+  animation: path-draw var(--duration-slow) var(--ease-expressive) forwards;
+}
+
+.animate-node-pulse {
+  animation: node-pulse 3s var(--ease-expressive) infinite;
+}
+
+/* Accessibility: prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .press-tactile:active {
+    transform: none !important;
+  }
+
+  .animate-checkmark,
+  .animate-path-draw {
+    stroke-dashoffset: 0 !important;
+    animation: none !important;
+  }
 }

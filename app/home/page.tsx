@@ -322,9 +322,9 @@ export default function HomePage() {
                     key={status}
                     type="button"
                     onClick={() => setFilterStatus(status)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-tactile active:scale-95 cursor-pointer select-none ${
                       filterStatus === status
-                        ? "bg-[color:var(--color-primary)] text-white shadow-sm"
+                        ? "bg-[color:var(--color-primary)] text-white shadow-xs"
                         : "bg-[color:var(--color-surface-muted)] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)]"
                     }`}
                   >
@@ -407,7 +407,7 @@ export default function HomePage() {
                   return (
                     <Card
                       key={d.id}
-                      className="p-6 space-y-4 hover:border-[color:var(--color-primary)]/40 transition-all shadow-sm"
+                      className="p-6 space-y-4 shadow-sm"
                     >
                       {/* Card Header Info */}
                       <div className="flex flex-wrap items-center justify-between gap-3">

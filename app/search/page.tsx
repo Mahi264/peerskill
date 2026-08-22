@@ -23,6 +23,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { AlertBanner } from "@/components/ui/toast";
+import { SearchRadarEmptyStateSVG } from "@/components/ui/motion-illustrations";
 
 const DEPARTMENTS = [
   "Computer Science",
@@ -322,9 +323,9 @@ function SearchPageContent() {
           <button
             type="button"
             onClick={() => handleTabChange("doubts")}
-            className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
+            className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-tactile active:scale-[0.98] cursor-pointer select-none ${
               currentTab === "doubts"
-                ? "bg-[color:var(--color-primary)] text-white shadow-sm"
+                ? "bg-[color:var(--color-primary)] text-white shadow-xs"
                 : "text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[color:var(--color-surface-muted)]"
             }`}
           >
@@ -335,9 +336,9 @@ function SearchPageContent() {
           <button
             type="button"
             onClick={() => handleTabChange("peers")}
-            className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
+            className={`inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg transition-tactile active:scale-[0.98] cursor-pointer select-none ${
               currentTab === "peers"
-                ? "bg-[color:var(--color-primary)] text-white shadow-sm"
+                ? "bg-[color:var(--color-primary)] text-white shadow-xs"
                 : "text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] hover:bg-[color:var(--color-surface-muted)]"
             }`}
           >
@@ -439,10 +440,8 @@ function SearchPageContent() {
 
           {/* No Results State */}
           {!loading && query.trim() !== "" && doubtResults.length === 0 && (
-            <Card className="p-8 text-center border-[color:var(--color-border)] shadow-sm space-y-4">
-              <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-amber-50 text-amber-600 mb-2">
-                <HelpCircle className="size-6" />
-              </div>
+            <Card className="p-8 text-center border-[color:var(--color-border)] shadow-sm space-y-4 animate-in fade-in duration-200">
+              <SearchRadarEmptyStateSVG className="mb-2" />
               <div className="space-y-1">
                 <h3 className="text-lg font-bold text-[color:var(--color-text)]">
                   No campus doubts found matching &ldquo;{query}&rdquo;
@@ -472,7 +471,7 @@ function SearchPageContent() {
               {doubtResults.map((doubt) => (
                 <Card
                   key={doubt.id}
-                  className="border-[color:var(--color-border)] shadow-sm hover:shadow-md transition-shadow rounded-[var(--radius-lg)] overflow-hidden"
+                  className="border-[color:var(--color-border)] shadow-sm rounded-[var(--radius-lg)] overflow-hidden"
                 >
                   <CardContent className="p-5 space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -694,10 +693,8 @@ function SearchPageContent() {
 
           {/* No Peers State */}
           {!loading && peerResults.length === 0 && (
-            <Card className="p-8 text-center border-[color:var(--color-border)] shadow-sm space-y-4">
-              <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-[color:var(--color-surface-muted)] text-[color:var(--color-text-muted)] mb-2">
-                <Users className="size-6" />
-              </div>
+            <Card className="p-8 text-center border-[color:var(--color-border)] shadow-sm space-y-4 animate-in fade-in duration-200">
+              <SearchRadarEmptyStateSVG className="mb-2" />
               <div className="space-y-1">
                 <h3 className="text-lg font-bold text-[color:var(--color-text)]">
                   No campus peers found
@@ -725,7 +722,7 @@ function SearchPageContent() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {peerResults.map((p) => (
                   <Link key={p.id} href={`/users/${p.id}`} className="block group">
-                    <Card className="p-5 border-[color:var(--color-border)] hover:border-[color:var(--color-primary)]/40 hover:shadow-md transition-all rounded-[var(--radius-lg)] bg-white h-full flex flex-col justify-between">
+                    <Card className="p-5 border-[color:var(--color-border)] shadow-sm rounded-[var(--radius-lg)] bg-white h-full flex flex-col justify-between">
                       <div className="space-y-3">
                         {/* Peer Header */}
                         <div className="flex items-start justify-between gap-3">

@@ -305,7 +305,7 @@ export default function CampusPeerProfilePage() {
                   {skills.map((skill) => (
                     <div
                       key={skill.id}
-                      className="flex items-center justify-between p-3 rounded-xl border border-[color:var(--color-border)] bg-white hover:bg-[color:var(--color-surface-muted)]/40 transition-colors shadow-xs"
+                      className="flex items-center justify-between p-3 rounded-xl border border-[color:var(--color-border)] bg-white shadow-xs"
                     >
                       <span className="text-sm font-semibold text-[color:var(--color-text)]">
                         {skill.name}

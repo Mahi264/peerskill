@@ -94,6 +94,7 @@ export async function GET(
             avatarUrl: targetUser.profile.avatarUrl,
             department: targetUser.profile.department,
             branch: targetUser.profile.branch,
+            section: targetUser.profile.section,
             graduationYear: targetUser.profile.graduationYear,
             bio: targetUser.profile.bio,
             helpAvailable: targetUser.profile.helpAvailable,

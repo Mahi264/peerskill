@@ -16,6 +16,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
 
 interface ViewerSession {
   id: string;
@@ -39,6 +40,7 @@ interface PeerProfileData {
     avatarUrl: string | null;
     department: string;
     branch: string | null;
+    section: string | null;
     graduationYear: number | null;
     bio: string | null;
     helpAvailable: boolean;
@@ -246,7 +248,7 @@ export default function CampusPeerProfilePage() {
 
             <div className="space-y-2 flex-1">
               <div className="flex flex-wrap items-center gap-2.5">
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[color:var(--color-text)]">
+                <h1 className="text-2xl font-bold tracking-tight text-[color:var(--color-text)]">
                   {profile.fullName}
                 </h1>
                 <Badge
@@ -257,10 +259,8 @@ export default function CampusPeerProfilePage() {
                 </Badge>
               </div>
 
-              <p className="text-sm font-medium text-[color:var(--color-text-muted)] flex flex-wrap items-center gap-1.5">
-                <span>{profile.department}</span>
-                {profile.branch && <span>• {profile.branch}</span>}
-                {profile.graduationYear && <span>• Class of {profile.graduationYear}</span>}
+              <p className="text-sm font-medium text-[color:var(--color-text-muted)]">
+                {formatPublicPeerAcademicSubtitle(profile)}
               </p>
 
               {profile.bio && (
@@ -297,7 +297,7 @@ export default function CampusPeerProfilePage() {
               </CardHeader>
 
               {skills.length === 0 ? (
-                <p className="text-xs text-[color:var(--color-text-muted)] italic py-2">
+                <p className="text-xs text-[color:var(--color-text-muted)] py-2">
                   No skills listed yet.
                 </p>
               ) : (

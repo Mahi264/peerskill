@@ -10,15 +10,20 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { FormattedContent } from "@/components/ui/formatted-content";
 import { AlertBanner } from "@/components/ui/toast";
 import { AcceptedCheckmarkSVG } from "@/components/ui/motion-illustrations";
+import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
 
 interface Author {
   id: string;
   email: string;
   fullName: string;
   department: string;
+  branch?: string | null;
+  section?: string | null;
+  graduationYear?: number | null;
   avatarUrl?: string | null;
 }
 
@@ -361,7 +366,7 @@ export default function DoubtDetailPage() {
 
           {/* Doubt Title & Skills */}
           <div className="space-y-3">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-[color:var(--color-text)] tracking-tight">
+            <h1 className="text-2xl font-bold text-[color:var(--color-text)] tracking-tight">
               {doubt.title}
             </h1>
 
@@ -390,7 +395,7 @@ export default function DoubtDetailPage() {
                 {doubt.author.fullName}
               </p>
               <p className="text-xs text-[color:var(--color-text-muted)]">
-                {doubt.author.department || "Campus Student"}
+                {formatPublicPeerAcademicSubtitle(doubt.author)}
               </p>
             </div>
           </Link>
@@ -400,9 +405,7 @@ export default function DoubtDetailPage() {
             <h2 className="text-xs font-bold uppercase tracking-wider text-[color:var(--color-text-muted)] mb-2">
               Problem Description
             </h2>
-            <p className="text-sm sm:text-base text-[color:var(--color-text)] whitespace-pre-wrap leading-relaxed">
-              {doubt.body}
-            </p>
+            <FormattedContent content={doubt.body} className="mt-1" />
           </div>
         </Card>
 
@@ -462,7 +465,7 @@ export default function DoubtDetailPage() {
                           )}
                         </div>
                         <p className="text-xs text-[color:var(--color-text-muted)]">
-                          {ans.author.department || "Campus Student"} • {formatDate(ans.createdAt)}
+                          {formatPublicPeerAcademicSubtitle(ans.author)} • {formatDate(ans.createdAt)}
                         </p>
                       </div>
                     </Link>
@@ -480,9 +483,7 @@ export default function DoubtDetailPage() {
                     )}
                   </div>
 
-                  <p className="text-sm text-[color:var(--color-text)] whitespace-pre-wrap leading-relaxed pl-1">
-                    {ans.body}
-                  </p>
+                  <FormattedContent content={ans.body} className="pl-1" />
                 </Card>
               ))}
             </div>
@@ -500,11 +501,11 @@ export default function DoubtDetailPage() {
 
             <CardContent className="p-0">
               <form onSubmit={handleSubmitAnswer} className="space-y-4">
-                <Textarea
+                <RichTextEditor
                   rows={4}
                   placeholder="Type your explanation or solution for this doubt..."
                   value={answerBody}
-                  onChange={(e) => setAnswerBody(e.target.value)}
+                  onChange={(val) => setAnswerBody(val)}
                 />
 
                 <div className="flex items-center justify-between">

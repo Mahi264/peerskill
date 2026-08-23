@@ -187,10 +187,9 @@ describe("GET /api/users/[id] (Integration - Real SQLite)", () => {
     expect(u.profile.helpAvailable).toBe(true);
     expect(u.profile.helpStatus).toBe("Free after 5 PM");
 
-    // Privacy verification: Email & section must NOT be exposed
+    expect(u.profile.section).toBe("A");
     expect(u.email).toBeUndefined();
     expect(u.profile.email).toBeUndefined();
-    expect(u.profile.section).toBeUndefined();
     expect(u.googleId).toBeUndefined();
     expect(u.passwordHash).toBeUndefined();
 

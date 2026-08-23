@@ -358,7 +358,7 @@ export default function ProfilePage() {
 
             <div className="space-y-1.5 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[color:var(--color-text)]">
+                <h1 className="text-2xl font-bold tracking-tight text-[color:var(--color-text)]">
                   {profileHeaderName}
                 </h1>
                 <Badge

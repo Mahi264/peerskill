@@ -7,7 +7,7 @@ export interface AvatarProps extends React.ComponentProps<"div"> {
   name: string;
   department?: string | null;
   src?: string | null;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
 }
 
 /**
@@ -75,6 +75,7 @@ function getDepartmentRingColor(department?: string | null): string {
 }
 
 const sizeClasses = {
+  xs: "size-6 text-[10px] border",
   sm: "size-8 text-xs border-2",
   md: "size-10 text-sm border-2",
   lg: "size-14 text-base border-3",

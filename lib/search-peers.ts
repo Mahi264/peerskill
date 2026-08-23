@@ -16,6 +16,7 @@ export interface FormattedPeer {
   avatarUrl: string | null;
   department: string;
   branch: string | null;
+  section: string | null;
   graduationYear: number | null;
   bio: string | null;
   helpAvailable: boolean;
@@ -237,6 +238,7 @@ export async function searchPeers(input: PeerSearchInput): Promise<PeerSearchRes
     avatarUrl: user.profile!.avatarUrl,
     department: user.profile!.department,
     branch: user.profile!.branch,
+    section: user.profile!.section,
     graduationYear: user.profile!.graduationYear,
     bio: user.profile!.bio,
     helpAvailable: user.profile!.helpAvailable,

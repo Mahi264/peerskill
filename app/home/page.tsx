@@ -12,8 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
+import { FormattedContent } from "@/components/ui/formatted-content";
 import { AlertBanner } from "@/components/ui/toast";
+import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
 
 interface UserSkill {
   id: string;
@@ -59,6 +60,9 @@ interface Doubt {
     email: string;
     fullName: string;
     department: string;
+    branch?: string | null;
+    section?: string | null;
+    graduationYear?: number | null;
     avatarUrl?: string | null;
   };
   skills: Array<{ id: string; name: string; slug: string }>;
@@ -80,13 +84,6 @@ export default function HomePage() {
   const [filterStatus, setFilterStatus] = React.useState<string>("ALL");
   const [filterUrgency, setFilterUrgency] = React.useState<string>("ALL");
   const [filterSkill, setFilterSkill] = React.useState<string>("ALL");
-
-  // Inline Answer Composer State
-  const [expandedComposerDoubtId, setExpandedComposerDoubtId] = React.useState<string | null>(null);
-  const [inlineAnswerBody, setInlineAnswerBody] = React.useState("");
-  const [submittingInlineAnswer, setSubmittingInlineAnswer] = React.useState(false);
-  const [inlineSuccessMsg, setInlineSuccessMsg] = React.useState<Record<string, string>>({});
-  const [inlineErrorMsg, setInlineErrorMsg] = React.useState<Record<string, string>>({});
 
   // Load session & user data
   React.useEffect(() => {
@@ -185,51 +182,6 @@ export default function HomePage() {
     }
   };
 
-  const handleInlineAnswerSubmit = async (e: React.FormEvent, doubtId: string) => {
-    e.preventDefault();
-    if (inlineAnswerBody.trim().length < 5) return;
-
-    setSubmittingInlineAnswer(true);
-    setInlineErrorMsg((prev) => ({ ...prev, [doubtId]: "" }));
-    setInlineSuccessMsg((prev) => ({ ...prev, [doubtId]: "" }));
-
-    try {
-      const res = await fetch(`/api/doubts/${doubtId}/answers`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body: inlineAnswerBody.trim() }),
-      });
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        setInlineErrorMsg((prev) => ({
-          ...prev,
-          [doubtId]: json?.error?.message || "Failed to submit answer.",
-        }));
-        return;
-      }
-
-      setDoubts((prev) =>
-        prev.map((d) => (d.id === doubtId ? { ...d, answerCount: d.answerCount + 1 } : d)),
-      );
-
-      setInlineSuccessMsg((prev) => ({
-        ...prev,
-        [doubtId]: "Answer submitted successfully!",
-      }));
-      setInlineAnswerBody("");
-      setExpandedComposerDoubtId(null);
-    } catch {
-      setInlineErrorMsg((prev) => ({
-        ...prev,
-        [doubtId]: "Failed to submit answer due to network error.",
-      }));
-    } finally {
-      setSubmittingInlineAnswer(false);
-    }
-  };
-
   if (loading) {
     return (
       <main className="min-h-screen bg-[color:var(--color-bg)] flex items-center justify-center p-6">
@@ -293,11 +245,11 @@ export default function HomePage() {
         {/* Top Action & Greeting Bar */}
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[color:var(--color-border)]/60 pb-5">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[color:var(--color-text)]">
+            <h1 className="text-2xl font-bold tracking-tight text-[color:var(--color-text)]">
               Campus Doubts
             </h1>
             <p className="text-sm text-[color:var(--color-text-muted)] mt-0.5">
-              Welcome back, <span className="font-semibold text-[color:var(--color-text)]">{displayName}</span> ({profile?.department || "Student"})
+              Welcome back, <span className="font-semibold text-[color:var(--color-text)]">{displayName}</span>
             </p>
           </div>
 
@@ -399,168 +351,100 @@ export default function HomePage() {
               </Card>
             ) : (
               <div className="space-y-4">
-                {doubts.map((d) => {
-                  const isExpanded = expandedComposerDoubtId === d.id;
-                  const hasInlineSuccess = !!inlineSuccessMsg[d.id];
-                  const hasInlineError = !!inlineErrorMsg[d.id];
-
-                  return (
-                    <Card
-                      key={d.id}
-                      className="p-6 space-y-4 shadow-sm"
-                    >
-                      {/* Card Header Info */}
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          {d.status === "RESOLVED" ? (
-                            <Badge variant="success" className="text-[10px] py-0.5 px-2 flex items-center gap-1">
-                              <CheckCircle2 className="size-3" />
-                              RESOLVED
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-[10px] py-0.5 px-2">
-                              OPEN
-                            </Badge>
-                          )}
-                          {getUrgencyBadge(d.urgency)}
-                        </div>
-
-                        <span className="text-xs text-[color:var(--color-text-muted)]">
-                          {formatDate(d.createdAt)}
-                        </span>
+                {doubts.map((d) => (
+                  <Card
+                    key={d.id}
+                    className="p-5 sm:p-6 space-y-3.5 shadow-sm"
+                  >
+                    {/* Card Header Info */}
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {d.status === "RESOLVED" ? (
+                          <Badge variant="success" className="text-[10px] py-0.5 px-2 flex items-center gap-1">
+                            <CheckCircle2 className="size-3" />
+                            RESOLVED
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px] py-0.5 px-2">
+                            OPEN
+                          </Badge>
+                        )}
+                        {getUrgencyBadge(d.urgency)}
                       </div>
 
-                      {/* Title & Preview Body */}
-                      <div className="space-y-1.5">
-                        <h2 className="text-lg sm:text-xl font-bold text-[color:var(--color-text)] hover:text-[color:var(--color-primary)] transition-colors">
-                          <Link href={`/doubts/${d.id}`}>{d.title}</Link>
-                        </h2>
-                        <p className="text-sm text-[color:var(--color-text-muted)] line-clamp-3 leading-relaxed">
-                          {d.body}
-                        </p>
-                      </div>
+                      <span className="text-xs text-[color:var(--color-text-muted)]">
+                        {formatDate(d.createdAt)}
+                      </span>
+                    </div>
 
-                      {/* Author & Skill Footer Bar */}
-                      <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-[color:var(--color-border)]/60">
-                        <Link
-                          href={`/users/${d.authorId || d.author.id}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex items-center gap-2 hover:underline group cursor-pointer"
-                        >
-                          <Avatar name={d.author.fullName} department={d.author.department} src={d.author.avatarUrl} size="sm" />
-                          <span className="text-xs font-semibold text-[color:var(--color-text)] group-hover:text-[color:var(--color-primary)]">
-                            {d.author.fullName}
-                          </span>
-                          <span className="text-xs text-[color:var(--color-text-muted)]">
-                            • {d.author.department || "Student"}
-                          </span>
-                        </Link>
+                    {/* Title & Rendered Preview Body */}
+                    <div className="space-y-2">
+                      <h2 className="text-lg sm:text-xl font-bold text-[color:var(--color-text)] hover:text-[color:var(--color-primary)] transition-colors">
+                        <Link href={`/doubts/${d.id}`}>{d.title}</Link>
+                      </h2>
 
-                        <div className="flex flex-wrap items-center gap-3">
-                          <div className="flex flex-wrap gap-1.5">
-                            {d.skills.map((s) => (
-                              <Badge key={s.id} variant="skill" className="text-[10px] py-0.5 px-2">
-                                {s.name}
-                              </Badge>
-                            ))}
+                      {d.body.length > 240 || d.body.split("\n").length > 4 ? (
+                        <div className="space-y-1">
+                          <div className="relative max-h-36 overflow-hidden">
+                            <FormattedContent content={d.body} className="text-sm" />
+                            <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[color:var(--color-surface)] to-transparent pointer-events-none" />
                           </div>
-
                           <Link
                             href={`/doubts/${d.id}`}
-                            className="flex items-center gap-1 text-xs font-medium text-[color:var(--color-text-muted)] hover:text-[color:var(--color-primary)] transition-colors"
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--color-primary)] hover:underline pt-0.5 cursor-pointer"
                           >
-                            <MessageSquare className="size-3.5" />
-                            <span>{d.answerCount} answers</span>
+                            <span>Read more</span>
+                            <ArrowRight className="size-3" />
                           </Link>
-
-                          {/* Action Button: Inline Answer Composer Trigger (OPEN & RESOLVED doubts) */}
-                          {d.status !== "CLOSED" && (
-                            <Button
-                              variant={isExpanded ? "outline" : "default"}
-                              size="sm"
-                              aria-expanded={isExpanded}
-                              aria-controls={`inline-answer-${d.id}`}
-                              onClick={() => {
-                                if (isExpanded) {
-                                  setExpandedComposerDoubtId(null);
-                                } else {
-                                  setExpandedComposerDoubtId(d.id);
-                                  setInlineAnswerBody("");
-                                }
-                              }}
-                              className="text-xs font-semibold h-8"
-                            >
-                              {isExpanded ? "Cancel" : "Answer"}
-                            </Button>
-                          )}
-
-                          {/* Concise Accepted Answer Indicator for RESOLVED Doubts */}
-                          {d.status === "RESOLVED" && (
-                            <Link href={`/doubts/${d.id}`}>
-                              <Badge variant="success" className="text-[10px] py-0.5 px-2 flex items-center gap-1 cursor-pointer">
-                                <CheckCircle2 className="size-3" />
-                                Accepted Answer
-                              </Badge>
-                            </Link>
-                          )}
                         </div>
-                      </div>
-
-                      {/* Inline Feedback Alerts */}
-                      {hasInlineSuccess && (
-                        <AlertBanner variant="success" message={inlineSuccessMsg[d.id]} />
+                      ) : (
+                        <FormattedContent content={d.body} className="text-sm" />
                       )}
-                      {hasInlineError && (
-                        <AlertBanner variant="error" message={inlineErrorMsg[d.id]} />
-                      )}
+                    </div>
 
-                      {/* Inline Answer Composer (Expanded directly on feed card) */}
-                      {isExpanded && (
-                        <form
-                          id={`inline-answer-${d.id}`}
-                          onSubmit={(e) => handleInlineAnswerSubmit(e, d.id)}
-                          className="pt-3 border-t border-[color:var(--color-primary)]/20 space-y-3 bg-[color:var(--color-surface-muted)]/40 p-4 rounded-xl"
+                    {/* Author & Actions Footer Bar */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[color:var(--color-border)]/60">
+                      <Link
+                        href={`/users/${d.authorId || d.author.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-2 hover:underline group cursor-pointer"
+                      >
+                        <Avatar name={d.author.fullName} department={d.author.department} src={d.author.avatarUrl} size="sm" />
+                        <span className="text-xs font-semibold text-[color:var(--color-text)] group-hover:text-[color:var(--color-primary)]">
+                          {d.author.fullName}
+                        </span>
+                        <span className="text-xs text-[color:var(--color-text-muted)]">
+                          • {formatPublicPeerAcademicSubtitle(d.author)}
+                        </span>
+                      </Link>
+
+                      <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex flex-wrap gap-1.5">
+                          {d.skills.map((s) => (
+                            <Badge key={s.id} variant="skill" className="text-[10px] py-0.5 px-2">
+                              {s.name}
+                            </Badge>
+                          ))}
+                        </div>
+
+                        <Link
+                          href={`/doubts/${d.id}`}
+                          className="flex items-center gap-1.5 text-xs font-medium text-[color:var(--color-text-muted)] hover:text-[color:var(--color-primary)] transition-colors"
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-[color:var(--color-text)]">
-                              Submit Answer to {d.author.fullName}
-                            </span>
-                            <span className="text-[10px] text-[color:var(--color-text-muted)]">
-                              Minimum 5 characters
-                            </span>
-                          </div>
+                          <MessageSquare className="size-3.5" />
+                          <span>{d.answerCount} {d.answerCount === 1 ? "answer" : "answers"}</span>
+                        </Link>
 
-                          <Textarea
-                            rows={3}
-                            placeholder="Type your explanation or solution for this doubt..."
-                            value={inlineAnswerBody}
-                            onChange={(e) => setInlineAnswerBody(e.target.value)}
-                            className="bg-white text-sm"
-                          />
-
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setExpandedComposerDoubtId(null)}
-                              disabled={submittingInlineAnswer}
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              type="submit"
-                              size="sm"
-                              disabled={submittingInlineAnswer || inlineAnswerBody.trim().length < 5}
-                            >
-                              {submittingInlineAnswer ? "Submitting..." : "Submit Answer"}
-                            </Button>
-                          </div>
-                        </form>
-                      )}
-                    </Card>
-                  );
-                })}
+                        {/* Direct Answer Navigation to /doubts/[id] */}
+                        {d.status !== "CLOSED" && (
+                          <Button asChild variant="default" size="sm" className="text-xs font-semibold h-8">
+                            <Link href={`/doubts/${d.id}`}>Answer</Link>
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                ))}
               </div>
             )}
           </section>
@@ -576,7 +460,7 @@ export default function HomePage() {
                     {displayName}
                   </h3>
                   <p className="text-xs text-[color:var(--color-text-muted)] truncate">
-                    {profile?.department || "Student"}
+                    {formatPublicPeerAcademicSubtitle(profile || {})}
                   </p>
                 </div>
               </div>

@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { AlertBanner } from "@/components/ui/toast";
 
 const SEED_SKILLS = [
@@ -243,12 +243,12 @@ export default function NewDoubtPage() {
                 <label htmlFor="doubt-body" className="text-sm font-semibold text-[color:var(--color-text)]">
                   Detailed Description <span className="text-[color:var(--color-danger)]">*</span>
                 </label>
-                <Textarea
+                <RichTextEditor
                   id="doubt-body"
                   rows={6}
                   placeholder="Describe your doubt in detail. Mention what code, concepts, or steps you have tried..."
                   value={body}
-                  onChange={(e) => setBody(e.target.value)}
+                  onChange={(val) => setBody(val)}
                 />
                 <p className="text-xs text-[color:var(--color-text-muted)]">
                   Minimum 10 characters. Include context, code snippets, or error messages.
@@ -338,7 +338,7 @@ export default function NewDoubtPage() {
                 {/* Selected Skills Chips */}
                 <div className="flex flex-wrap gap-2 pt-1">
                   {skills.length === 0 ? (
-                    <span className="text-xs text-[color:var(--color-text-muted)] italic">
+                    <span className="text-xs text-[color:var(--color-text-muted)]">
                       No skill tags added yet. Tap quick-add chips above or enter a custom tag.
                     </span>
                   ) : (

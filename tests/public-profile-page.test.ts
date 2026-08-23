@@ -85,8 +85,8 @@ describe("Campus Peer Profile Page (app/users/[id]/page.tsx)", () => {
     expect(nameHeading).toBeDefined();
     expect(screen.getByText("Available to help")).toBeDefined();
 
-    // Department & academic info
-    expect(screen.getByText(/Computer Science/i)).toBeDefined();
+    // Academic info
+    expect(screen.getByText(/CSE/i)).toBeDefined();
     expect(screen.getByText(/Class of 2027/i)).toBeDefined();
 
     // Bio

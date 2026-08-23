@@ -23,7 +23,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { AlertBanner } from "@/components/ui/toast";
-import { SearchRadarEmptyStateSVG } from "@/components/ui/motion-illustrations";
+import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
 
 const DEPARTMENTS = [
   "Computer Science",
@@ -72,6 +72,9 @@ interface SearchDoubt {
     email: string;
     fullName: string;
     department: string;
+    branch?: string | null;
+    section?: string | null;
+    graduationYear?: number | null;
     avatarUrl?: string | null;
   };
   skills: Array<{ id: string; name: string; slug: string }>;
@@ -83,6 +86,7 @@ interface SearchPeer {
   avatarUrl: string | null;
   department: string;
   branch: string | null;
+  section?: string | null;
   graduationYear: number | null;
   bio: string | null;
   helpAvailable: boolean;
@@ -111,7 +115,9 @@ function SearchPageContent() {
   const searchParams = useSearchParams();
 
   const currentTab = searchParams.get("tab") === "peers" ? "peers" : "doubts";
-  const query = searchParams.get("q") || "";
+  const doubtQuery = searchParams.get("q") || "";
+  const peerQuery = searchParams.get("peerQuery") || searchParams.get("peerQ") || "";
+  const activeQuery = currentTab === "doubts" ? doubtQuery : peerQuery;
 
   // Doubts filters
   const filterStatus = searchParams.get("status") || "ALL";
@@ -160,16 +166,38 @@ function SearchPageContent() {
       if (!newParams.page) {
         params.delete("page");
       }
-      router.push(`/search?${params.toString()}`);
+      const queryString = params.toString();
+      router.push(queryString ? `/search?${queryString}` : "/search");
     },
     [router, searchParams],
   );
 
   const handleTabChange = (tab: "doubts" | "peers") => {
     const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", tab);
+    if (tab === "doubts") {
+      params.delete("tab");
+    } else {
+      params.set("tab", "peers");
+    }
     params.delete("page");
-    router.push(`/search?${params.toString()}`);
+    const queryString = params.toString();
+    router.push(queryString ? `/search?${queryString}` : "/search");
+  };
+
+  const handleSearchSubmit = (newQuery: string) => {
+    if (currentTab === "doubts") {
+      updateFilters({ q: newQuery || null, page: null });
+    } else {
+      updateFilters({ peerQuery: newQuery || null, peerQ: null, page: null });
+    }
+  };
+
+  const handleSearchClear = () => {
+    if (currentTab === "doubts") {
+      updateFilters({ q: null, page: null });
+    } else {
+      updateFilters({ peerQuery: null, peerQ: null, page: null });
+    }
   };
 
   // Run Search Effect
@@ -177,22 +205,22 @@ function SearchPageContent() {
     let ignore = false;
 
     async function runSearch() {
-      if (!query.trim() && currentTab === "doubts") {
-        if (!ignore) {
-          setDoubtResults([]);
-          setDoubtPagination({ page: 1, limit: 10, total: 0, totalPages: 1 });
-          setLoading(false);
+      if (currentTab === "doubts") {
+        if (!doubtQuery.trim()) {
+          if (!ignore) {
+            setDoubtResults([]);
+            setDoubtPagination({ page: 1, limit: 10, total: 0, totalPages: 1 });
+            setLoading(false);
+          }
+          return;
         }
-        return;
-      }
 
-      setLoading(true);
-      setError(null);
+        setLoading(true);
+        setError(null);
 
-      try {
-        if (currentTab === "doubts") {
+        try {
           const params = new URLSearchParams();
-          params.set("q", query.trim());
+          params.set("q", doubtQuery.trim());
           if (filterStatus !== "ALL") params.set("status", filterStatus);
           if (filterUrgency !== "ALL") params.set("urgency", filterUrgency);
           if (filterSkill) params.set("skillId", filterSkill);
@@ -210,10 +238,23 @@ function SearchPageContent() {
               json.data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 },
             );
           }
-        } else {
-          // Peers search
+        } catch {
+          if (!ignore) {
+            setError("Unable to search campus knowledge right now. Please try again.");
+          }
+        } finally {
+          if (!ignore) {
+            setLoading(false);
+          }
+        }
+      } else {
+        // Peers search
+        setLoading(true);
+        setError(null);
+
+        try {
           const params = new URLSearchParams();
-          if (query.trim()) params.set("q", query.trim());
+          if (peerQuery.trim()) params.set("q", peerQuery.trim());
           if (filterDept !== "ALL") params.set("department", filterDept);
           if (filterAvailable) params.set("available", "true");
           if (filterLevel !== "ALL") params.set("level", filterLevel);
@@ -232,18 +273,14 @@ function SearchPageContent() {
               json.data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 },
             );
           }
-        }
-      } catch {
-        if (!ignore) {
-          setError(
-            currentTab === "doubts"
-              ? "Unable to search campus knowledge right now. Please try again."
-              : "Unable to search campus peers right now. Please try again.",
-          );
-        }
-      } finally {
-        if (!ignore) {
-          setLoading(false);
+        } catch {
+          if (!ignore) {
+            setError("Unable to search campus peers right now. Please try again.");
+          }
+        } finally {
+          if (!ignore) {
+            setLoading(false);
+          }
         }
       }
     }
@@ -255,7 +292,8 @@ function SearchPageContent() {
     };
   }, [
     currentTab,
-    query,
+    doubtQuery,
+    peerQuery,
     filterStatus,
     filterUrgency,
     filterSkill,
@@ -309,14 +347,31 @@ function SearchPageContent() {
             size="sm"
             className="bg-[color:var(--color-primary)] hover:bg-[color:var(--color-primary-hover)] text-white shadow-sm"
           >
-            <Link href={query ? `/doubts/new?title=${encodeURIComponent(query)}` : "/doubts/new"}>
+            <Link
+              href={
+                currentTab === "doubts" && doubtQuery.trim()
+                  ? `/doubts/new?title=${encodeURIComponent(doubtQuery.trim())}`
+                  : "/doubts/new"
+              }
+            >
               <Plus className="size-4 mr-1.5" />
               Ask Doubt
             </Link>
           </Button>
         </div>
 
-        <HeaderSearch initialValue={query} className="max-w-none" />
+        <HeaderSearch
+          key={currentTab}
+          initialValue={activeQuery}
+          placeholder={
+            currentTab === "doubts"
+              ? "Search campus doubts & solutions..."
+              : "Search campus peers by name or skill..."
+          }
+          onSearch={handleSearchSubmit}
+          onClear={handleSearchClear}
+          className="max-w-none"
+        />
 
         {/* Mode / Tabs Switcher */}
         <div className="flex items-center gap-2 border-b border-[color:var(--color-border)] pb-2">
@@ -355,7 +410,7 @@ function SearchPageContent() {
       {currentTab === "doubts" && (
         <div className="space-y-6">
           {/* Doubts Filter Row */}
-          {query.trim() !== "" && (
+          {doubtQuery.trim() !== "" && (
             <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white rounded-[var(--radius-md)] border border-[color:var(--color-border)] shadow-sm">
               <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                 <span className="text-xs font-semibold text-[color:var(--color-text-muted)] uppercase tracking-wider">
@@ -394,7 +449,7 @@ function SearchPageContent() {
           )}
 
           {/* Initial Empty State for Doubts */}
-          {!query.trim() && (
+          {!doubtQuery.trim() && (
             <Card className="p-8 sm:p-12 text-center border-[color:var(--color-border)] shadow-sm">
               <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-[color:var(--color-primary)]/10 text-[color:var(--color-primary)] mb-4">
                 <SearchIcon className="size-7" />
@@ -414,7 +469,7 @@ function SearchPageContent() {
                   {suggestedQueries.map((item) => (
                     <button
                       key={item}
-                      onClick={() => router.push(`/search?tab=doubts&q=${encodeURIComponent(item)}`)}
+                      onClick={() => updateFilters({ q: item, page: null })}
                       className="rounded-full border border-[color:var(--color-border)] bg-white px-3.5 py-1.5 text-xs font-medium text-[color:var(--color-text)] hover:border-[color:var(--color-primary)] hover:text-[color:var(--color-primary)] transition-colors shadow-sm cursor-pointer"
                     >
                       {item}
@@ -439,12 +494,11 @@ function SearchPageContent() {
           )}
 
           {/* No Results State */}
-          {!loading && query.trim() !== "" && doubtResults.length === 0 && (
+          {!loading && doubtQuery.trim() !== "" && doubtResults.length === 0 && (
             <Card className="p-8 text-center border-[color:var(--color-border)] shadow-sm space-y-4 animate-in fade-in duration-200">
-              <SearchRadarEmptyStateSVG className="mb-2" />
               <div className="space-y-1">
                 <h3 className="text-lg font-bold text-[color:var(--color-text)]">
-                  No campus doubts found matching &ldquo;{query}&rdquo;
+                  No campus doubts found matching &ldquo;{doubtQuery}&rdquo;
                 </h3>
                 <p className="text-sm text-[color:var(--color-text-muted)] max-w-md mx-auto">
                   Try searching with broader terms or different keywords. If your doubt hasn&apos;t been asked yet, post it now!
@@ -456,7 +510,7 @@ function SearchPageContent() {
                   asChild
                   className="bg-[color:var(--color-primary)] hover:bg-[color:var(--color-primary-hover)] text-white shadow-sm"
                 >
-                  <Link href={`/doubts/new?title=${encodeURIComponent(query)}`}>
+                  <Link href={`/doubts/new?title=${encodeURIComponent(doubtQuery)}`}>
                     <Plus className="size-4 mr-1.5" />
                     Ask a Doubt About This
                   </Link>
@@ -466,12 +520,12 @@ function SearchPageContent() {
           )}
 
           {/* Doubt Results List */}
-          {!loading && query.trim() !== "" && doubtResults.length > 0 && (
+          {!loading && doubtQuery.trim() !== "" && doubtResults.length > 0 && (
             <div className="space-y-4">
               {doubtResults.map((doubt) => (
                 <Card
                   key={doubt.id}
-                  className="border-[color:var(--color-border)] shadow-sm rounded-[var(--radius-lg)] overflow-hidden"
+                  className="border-[color:var(--color-border)] shadow-sm rounded-[var(--radius-md)] overflow-hidden"
                 >
                   <CardContent className="p-5 space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -539,7 +593,7 @@ function SearchPageContent() {
                           {doubt.author.fullName}
                         </span>
                         <span>•</span>
-                        <span>{doubt.author.department}</span>
+                        <span>{formatPublicPeerAcademicSubtitle(doubt.author)}</span>
                       </Link>
 
                       <div className="flex items-center gap-3">
@@ -694,7 +748,6 @@ function SearchPageContent() {
           {/* No Peers State */}
           {!loading && peerResults.length === 0 && (
             <Card className="p-8 text-center border-[color:var(--color-border)] shadow-sm space-y-4 animate-in fade-in duration-200">
-              <SearchRadarEmptyStateSVG className="mb-2" />
               <div className="space-y-1">
                 <h3 className="text-lg font-bold text-[color:var(--color-text)]">
                   No campus peers found
@@ -707,7 +760,15 @@ function SearchPageContent() {
                 <Button
                   variant="outline"
                   onClick={() =>
-                    router.push("/search?tab=peers")
+                    updateFilters({
+                      peerQuery: null,
+                      peerQ: null,
+                      department: null,
+                      level: null,
+                      available: null,
+                      skill: null,
+                      page: null,
+                    })
                   }
                 >
                   Reset Peer Filters
@@ -722,7 +783,7 @@ function SearchPageContent() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {peerResults.map((p) => (
                   <Link key={p.id} href={`/users/${p.id}`} className="block group">
-                    <Card className="p-5 border-[color:var(--color-border)] shadow-sm rounded-[var(--radius-lg)] bg-white h-full flex flex-col justify-between">
+                    <Card className="p-5 border-[color:var(--color-border)] shadow-sm rounded-[var(--radius-md)] bg-white h-full flex flex-col justify-between">
                       <div className="space-y-3">
                         {/* Peer Header */}
                         <div className="flex items-start justify-between gap-3">
@@ -738,9 +799,7 @@ function SearchPageContent() {
                                 {p.fullName}
                               </h3>
                               <p className="text-xs text-[color:var(--color-text-muted)]">
-                                {p.department}
-                                {p.branch ? ` • ${p.branch}` : ""}
-                                {p.graduationYear ? ` • Class of ${p.graduationYear}` : ""}
+                                {formatPublicPeerAcademicSubtitle(p)}
                               </p>
                             </div>
                           </div>

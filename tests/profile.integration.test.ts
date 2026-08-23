@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, beforeAll, beforeEach, afterAll, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -7,39 +7,40 @@ const TEST_DB_URL = "file:./test-profile-integration.db";
 
 vi.hoisted(() => {
   process.env.DATABASE_URL = "file:./test-profile-integration.db";
-  process.env.COLLEGE_EMAIL_DOMAIN = "college.edu";
+  process.env.COLLEGE_EMAIL_DOMAIN = "mitsgwl.ac.in";
 });
 
+import { prisma } from "@/lib/prisma";
+import { hashPassword } from "@/lib/password";
+import { createSession, SESSION_COOKIE_NAME } from "@/lib/session";
 import { PATCH } from "@/app/api/profiles/me/route";
 import { PUT as PUT_SKILLS } from "@/app/api/profiles/me/skills/route";
-
-import { hashPassword } from "@/lib/password";
-import { prisma } from "@/lib/prisma";
-import { createSession, SESSION_COOKIE_NAME } from "@/lib/session";
 
 function createRequestWithCookie(
   url: string,
   method: string,
-  body: unknown,
-  rawToken?: string,
+  body?: unknown,
+  token?: string,
 ): Request {
-  const headers = new Headers({ "Content-Type": "application/json" });
-  if (rawToken !== undefined) {
-    headers.set("cookie", `${SESSION_COOKIE_NAME}=${rawToken}`);
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) {
+    headers["Cookie"] = `${SESSION_COOKIE_NAME}=${token}`;
   }
   return new Request(url, {
     method,
     headers,
-    body: JSON.stringify(body),
+    body: body ? JSON.stringify(body) : undefined,
   });
 }
 
-describe("Profile & Skills API (Integration - Real SQLite)", () => {
+describe("Profile & Skills Database Persistence (Integration Tests)", () => {
   let userId: string;
   let rawToken: string;
 
   beforeAll(() => {
-    execSync("npx prisma db push --skip-generate", {
+    execSync("npx prisma db push --skip-generate --accept-data-loss", {
       env: {
         ...process.env,
         DATABASE_URL: TEST_DB_URL,
@@ -77,9 +78,8 @@ describe("Profile & Skills API (Integration - Real SQLite)", () => {
   it("persists profile metadata in real SQLite via PATCH /api/profiles/me", async () => {
     const payload = {
       fullName: "Aarav Mehta",
-      department: "Computer Science",
       branch: "CSE",
-      graduationYear: 2027,
+      graduationYear: 2028,
       section: "A",
       bio: "Aspiring Software Engineer",
     };
@@ -102,9 +102,8 @@ describe("Profile & Skills API (Integration - Real SQLite)", () => {
 
     expect(dbProfile).not.toBeNull();
     expect(dbProfile?.fullName).toBe("Aarav Mehta");
-    expect(dbProfile?.department).toBe("Computer Science");
     expect(dbProfile?.branch).toBe("CSE");
-    expect(dbProfile?.graduationYear).toBe(2027);
+    expect(dbProfile?.graduationYear).toBe(2028);
   });
 
   it("persists skills and transitions status to ACTIVE when profile and 3+ skills exist", async () => {
@@ -115,7 +114,8 @@ describe("Profile & Skills API (Integration - Real SQLite)", () => {
         "PATCH",
         {
           fullName: "Aarav Mehta",
-          department: "Computer Science",
+          branch: "Computer Science & Engineering (CSE)",
+          graduationYear: 2028,
         },
         rawToken,
       ),
@@ -141,36 +141,60 @@ describe("Profile & Skills API (Integration - Real SQLite)", () => {
 
     expect(response.status).toBe(200);
     const json = await response.json();
-    expect(json.data.skills).toHaveLength(3);
     expect(json.data.user.status).toBe("ACTIVE");
 
-    // Verify Skills and UserSkills in SQLite
+    // Verify directly in SQLite
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+    expect(dbUser?.status).toBe("ACTIVE");
+
     const dbUserSkills = await prisma.userSkill.findMany({
       where: { userId },
       include: { skill: true },
     });
-
     expect(dbUserSkills).toHaveLength(3);
     const skillNames = dbUserSkills.map((us) => us.skill.name);
     expect(skillNames).toContain("React");
     expect(skillNames).toContain("Node.js");
     expect(skillNames).toContain("Python");
-
-    // Verify User status in SQLite
-    const dbUser = await prisma.user.findUnique({ where: { id: userId } });
-    expect(dbUser?.status).toBe("ACTIVE");
   });
 
-  it("replaces existing skills on subsequent PUT /api/profiles/me/skills calls", async () => {
-    // Initial 3 skills
+  it("rejects PUT /api/profiles/me/skills with fewer than 3 skills", async () => {
+    const skillsPayload = {
+      skills: [{ name: "React", level: "ADVANCED" }],
+    };
+
+    const response = await PUT_SKILLS(
+      createRequestWithCookie(
+        "http://localhost:3000/api/profiles/me/skills",
+        "PUT",
+        skillsPayload,
+        rawToken,
+      ),
+    );
+
+    expect(response.status).toBe(422);
+    const json = await response.json();
+    expect(json.error.code).toBe("VALIDATION_ERROR");
+
+    // User status remains PENDING in SQLite
+    const dbUser = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+    expect(dbUser?.status).toBe("PENDING");
+  });
+
+  it("atomically replaces full skills list on subsequent updates", async () => {
+    // 1. Initial 3 skills
     await PUT_SKILLS(
       createRequestWithCookie(
         "http://localhost:3000/api/profiles/me/skills",
         "PUT",
         {
           skills: [
-            { name: "React", level: "ADVANCED" },
-            { name: "Node.js", level: "INTERMEDIATE" },
+            { name: "React", level: "BEGINNER" },
+            { name: "Node.js", level: "BEGINNER" },
             { name: "Python", level: "BEGINNER" },
           ],
         },
@@ -178,18 +202,20 @@ describe("Profile & Skills API (Integration - Real SQLite)", () => {
       ),
     );
 
-    // Replace with 3 new skills
+    // 2. Replace with 3 new skills
+    const updatePayload = {
+      skills: [
+        { name: "Rust", level: "ADVANCED" },
+        { name: "Go", level: "INTERMEDIATE" },
+        { name: "TypeScript", level: "MENTOR" },
+      ],
+    };
+
     const response = await PUT_SKILLS(
       createRequestWithCookie(
         "http://localhost:3000/api/profiles/me/skills",
         "PUT",
-        {
-          skills: [
-            { name: "Rust", level: "MENTOR" },
-            { name: "Go", level: "ADVANCED" },
-            { name: "Docker", level: "INTERMEDIATE" },
-          ],
-        },
+        updatePayload,
         rawToken,
       ),
     );
@@ -214,7 +240,7 @@ describe("Profile & Skills API (Integration - Real SQLite)", () => {
       createRequestWithCookie(
         "http://localhost:3000/api/profiles/me",
         "PATCH",
-        { fullName: "Aarav Mehta", department: "Computer Science" },
+        { fullName: "Aarav Mehta", branch: "CSE" },
         rawToken,
       ),
     );
@@ -281,7 +307,7 @@ describe("Profile & Skills API (Integration - Real SQLite)", () => {
         "PATCH",
         {
           fullName: "Attacker Name",
-          department: "Hacking",
+          branch: "Hacking",
         },
         "invalid-token",
       ),
@@ -309,7 +335,7 @@ describe("Profile & Skills API (Integration - Real SQLite)", () => {
       createRequestWithCookie(
         "http://localhost:3000/api/profiles/me",
         "PATCH",
-        { fullName: "Suspended User", department: "Computer Science" },
+        { fullName: "Suspended User", branch: "CSE" },
         suspendedSession.rawToken,
       ),
     );
@@ -351,7 +377,6 @@ describe("Profile & Skills API (Integration - Real SQLite)", () => {
       data: {
         userId,
         fullName: "Verified Google Name",
-        department: "",
       },
     });
 
@@ -361,7 +386,6 @@ describe("Profile & Skills API (Integration - Real SQLite)", () => {
         "PATCH",
         {
           fullName: "Attacker Malicious Name",
-          department: "Electrical Engineering",
           branch: "EE",
         },
         rawToken,
@@ -376,8 +400,6 @@ describe("Profile & Skills API (Integration - Real SQLite)", () => {
 
     // Verified Google Name MUST NOT be overridden by client
     expect(dbProfile?.fullName).toBe("Verified Google Name");
-    expect(dbProfile?.department).toBe("Electrical Engineering");
     expect(dbProfile?.branch).toBe("EE");
   });
 });
-

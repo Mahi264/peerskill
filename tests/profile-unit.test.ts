@@ -83,7 +83,7 @@ describe("PATCH /api/profiles/me (Unit Tests)", () => {
     const response = await PATCH(
       createRequest("http://localhost:3000/api/profiles/me", "PATCH", {
         fullName: "Aarav Mehta",
-        department: "Computer Science",
+        branch: "Computer Science & Engineering (CSE)",
       }),
     );
 
@@ -92,19 +92,36 @@ describe("PATCH /api/profiles/me (Unit Tests)", () => {
     expect(json.error.code).toBe("UNAUTHENTICATED");
   });
 
-  it("returns 422 VALIDATION_ERROR when missing required department", async () => {
-    mockGetAuthenticatedUser.mockResolvedValue(fakeUser());
+  it("updates profile without requiring department (department completely removed)", async () => {
+    const user = fakeUser();
+    mockGetAuthenticatedUser.mockResolvedValue(user);
+
+    mockProfileUpsert.mockResolvedValue({
+      userId: user.id,
+      fullName: "Aarav Mehta",
+      avatarUrl: null,
+      branch: "Computer Science & Engineering (CSE)",
+      graduationYear: 2028,
+      section: "A",
+      bio: "Learning DSA and Web Dev",
+      helpAvailable: true,
+      contactVisibility: "CONNECTIONS",
+      chatRequestVisibility: "CONNECTIONS",
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+      updatedAt: new Date("2026-01-01T00:00:00Z"),
+    });
 
     const response = await PATCH(
       createRequest("http://localhost:3000/api/profiles/me", "PATCH", {
         branch: "Computer Science & Engineering (CSE)",
+        graduationYear: 2028,
       }),
     );
 
-    expect(response.status).toBe(422);
+    expect(response.status).toBe(200);
     const json = await response.json();
-    expect(json.error.code).toBe("VALIDATION_ERROR");
-    expect(json.error.details).toHaveProperty("department");
+    expect(json.data.profile.branch).toBe("Computer Science & Engineering (CSE)");
+    expect(json.data.profile).not.toHaveProperty("department");
   });
 
   it("returns 403 ACCOUNT_SUSPENDED when user status is SUSPENDED", async () => {
@@ -113,7 +130,7 @@ describe("PATCH /api/profiles/me (Unit Tests)", () => {
     const response = await PATCH(
       createRequest("http://localhost:3000/api/profiles/me", "PATCH", {
         fullName: "Aarav Mehta",
-        department: "Computer Science",
+        branch: "Computer Science & Engineering (CSE)",
       }),
     );
 
@@ -133,9 +150,8 @@ describe("PATCH /api/profiles/me (Unit Tests)", () => {
       userId: user.id,
       fullName: "Aarav Mehta",
       avatarUrl: null,
-      department: "Computer Science",
       branch: "CSE",
-      graduationYear: 2027,
+      graduationYear: 2028,
       section: "A",
       bio: "Learning DSA and Web Dev",
       helpAvailable: true,
@@ -148,9 +164,8 @@ describe("PATCH /api/profiles/me (Unit Tests)", () => {
     const response = await PATCH(
       createRequest("http://localhost:3000/api/profiles/me", "PATCH", {
         fullName: "Aarav Mehta",
-        department: "Computer Science",
         branch: "CSE",
-        graduationYear: 2027,
+        graduationYear: 2028,
         section: "A",
         bio: "Learning DSA and Web Dev",
         userId: "attacker-user-id", // should be ignored
@@ -163,7 +178,7 @@ describe("PATCH /api/profiles/me (Unit Tests)", () => {
     expect(json.data.profile).toMatchObject({
       userId: "user-cuid-123",
       fullName: "Aarav Mehta",
-      department: "Computer Science",
+      branch: "CSE",
     });
 
     expect(mockProfileUpsert).toHaveBeenCalledWith(

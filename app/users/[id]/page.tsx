@@ -27,7 +27,6 @@ interface ViewerSession {
 
 interface ViewerProfile {
   fullName: string;
-  department: string;
   avatarUrl?: string | null;
 }
 
@@ -38,7 +37,6 @@ interface PeerProfileData {
   profile: {
     fullName: string;
     avatarUrl: string | null;
-    department: string;
     branch: string | null;
     section: string | null;
     graduationYear: number | null;
@@ -241,7 +239,6 @@ export default function CampusPeerProfilePage() {
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
             <Avatar
               name={profile.fullName}
-              department={profile.department}
               src={profile.avatarUrl}
               size="xl"
             />

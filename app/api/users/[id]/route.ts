@@ -92,7 +92,6 @@ export async function GET(
           profile: {
             fullName: targetUser.profile.fullName,
             avatarUrl: targetUser.profile.avatarUrl,
-            department: targetUser.profile.department,
             branch: targetUser.profile.branch,
             section: targetUser.profile.section,
             graduationYear: targetUser.profile.graduationYear,

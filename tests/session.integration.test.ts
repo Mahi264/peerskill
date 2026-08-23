@@ -25,7 +25,7 @@ describe("Session Management (Integration - Real SQLite)", () => {
   let testUserId: string;
 
   beforeAll(() => {
-    execSync("npx prisma db push --skip-generate", {
+    execSync("npx prisma db push --skip-generate --accept-data-loss", {
       env: {
         ...process.env,
         DATABASE_URL: TEST_DB_URL,

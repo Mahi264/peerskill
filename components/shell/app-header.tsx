@@ -11,14 +11,12 @@ export interface AppHeaderProps {
   } | null;
   profile?: {
     fullName: string;
-    department: string;
     avatarUrl?: string | null;
   } | null;
 }
 
 export function AppHeader({ user, profile }: AppHeaderProps) {
   const displayName = profile?.fullName || user?.email?.split("@")[0] || "Student";
-  const department = profile?.department || null;
 
   return (
     <header className="flex md:hidden h-14 items-center justify-between border-b border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-4 sticky top-0 z-30 gap-3">
@@ -41,7 +39,7 @@ export function AppHeader({ user, profile }: AppHeaderProps) {
         </Link>
 
         <Link href="/profile">
-          <Avatar name={displayName} department={department} src={profile?.avatarUrl} size="sm" />
+          <Avatar name={displayName} src={profile?.avatarUrl} size="sm" />
         </Link>
       </div>
     </header>

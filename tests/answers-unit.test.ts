@@ -133,7 +133,7 @@ describe("Answers & Accept API (Unit Tests)", () => {
           isAccepted: false,
           createdAt: new Date(),
           updatedAt: new Date(),
-          author: { id: "user-2", email: "helper@college.edu", profile: { fullName: "Helper", department: "CS", avatarUrl: null } },
+          author: { id: "user-2", email: "helper@college.edu", profile: { fullName: "Helper", avatarUrl: null } },
         },
         { id: "doubt-1", answerCount: 1 },
       ]);
@@ -159,7 +159,7 @@ describe("Answers & Accept API (Unit Tests)", () => {
           isAccepted: false,
           createdAt: new Date(),
           updatedAt: new Date(),
-          author: { id: "user-2", email: "helper@college.edu", profile: { fullName: "Helper", department: "CS", avatarUrl: null } },
+          author: { id: "user-2", email: "helper@college.edu", profile: { fullName: "Helper", avatarUrl: null } },
         },
         { id: "doubt-1", answerCount: 2 },
       ]);
@@ -198,7 +198,7 @@ describe("Answers & Accept API (Unit Tests)", () => {
           isAccepted: false,
           createdAt: new Date(),
           updatedAt: new Date(),
-          author: { id: "asker-1", email: "asker@college.edu", profile: { fullName: "Asker", department: "CS", avatarUrl: null } },
+          author: { id: "asker-1", email: "asker@college.edu", profile: { fullName: "Asker", avatarUrl: null } },
         },
         { id: "doubt-1", answerCount: 1 },
       ]);
@@ -257,7 +257,7 @@ describe("Answers & Accept API (Unit Tests)", () => {
           isAccepted: true,
           createdAt: new Date(),
           updatedAt: new Date(),
-          author: { id: "asker-1", email: "asker@college.edu", profile: { fullName: "Asker", department: "CS", avatarUrl: null } },
+          author: { id: "asker-1", email: "asker@college.edu", profile: { fullName: "Asker", avatarUrl: null } },
         },
         { id: "doubt-1", status: "RESOLVED", acceptedAnswerId: "ans-self", updatedAt: new Date() },
       ]);
@@ -286,7 +286,7 @@ describe("Answers & Accept API (Unit Tests)", () => {
           isAccepted: true,
           createdAt: new Date(),
           updatedAt: new Date(),
-          author: { id: "helper-2", email: "helper2@college.edu", profile: { fullName: "Helper 2", department: "CS", avatarUrl: null } },
+          author: { id: "helper-2", email: "helper2@college.edu", profile: { fullName: "Helper 2", avatarUrl: null } },
         },
         { id: "doubt-1", status: "RESOLVED", acceptedAnswerId: "ans-2", updatedAt: new Date() },
       ]);

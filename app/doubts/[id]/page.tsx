@@ -20,7 +20,6 @@ interface Author {
   id: string;
   email: string;
   fullName: string;
-  department: string;
   branch?: string | null;
   section?: string | null;
   graduationYear?: number | null;
@@ -69,7 +68,6 @@ interface UserSession {
 
 interface UserProfile {
   fullName: string;
-  department: string;
   avatarUrl?: string | null;
 }
 
@@ -386,7 +384,6 @@ export default function DoubtDetailPage() {
           >
             <Avatar
               name={doubt.author.fullName}
-              department={doubt.author.department}
               src={doubt.author.avatarUrl}
               size="md"
             />
@@ -448,7 +445,6 @@ export default function DoubtDetailPage() {
                     >
                       <Avatar
                         name={ans.author.fullName}
-                        department={ans.author.department}
                         src={ans.author.avatarUrl}
                         size="md"
                       />

@@ -31,7 +31,7 @@ describe("Campus Peer Profile Page (app/users/[id]/page.tsx)", () => {
               JSON.stringify({
                 data: {
                   user: { id: "viewer-1", email: "viewer@mitsgwl.ac.in", status: "ACTIVE" },
-                  profile: { fullName: "Viewer User", department: "IT" },
+                  profile: { fullName: "Viewer User" },
                 },
               }),
               { status: 200 },
@@ -51,7 +51,6 @@ describe("Campus Peer Profile Page (app/users/[id]/page.tsx)", () => {
                     profile: {
                       fullName: "Mohit Sharma",
                       avatarUrl: null,
-                      department: "Computer Science",
                       branch: "CSE",
                       graduationYear: 2027,
                       bio: "Passionate about Next.js and algorithms.",

@@ -156,7 +156,6 @@ export async function POST(
             profile: {
               select: {
                 fullName: true,
-                department: true,
                 avatarUrl: true,
               },
             },
@@ -196,7 +195,6 @@ export async function POST(
             id: updatedAnswer.author.id,
             email: updatedAnswer.author.email,
             fullName: updatedAnswer.author.profile?.fullName || updatedAnswer.author.email.split("@")[0],
-            department: updatedAnswer.author.profile?.department || "",
             avatarUrl: updatedAnswer.author.profile?.avatarUrl || null,
           },
         },

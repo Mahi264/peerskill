@@ -17,7 +17,6 @@ export const peerSearchSchema = z.object({
   q: z.string().trim().optional(),
   skill: z.string().trim().optional(),
   skillId: z.string().trim().optional(),
-  department: z.string().trim().optional(),
   available: z
     .enum(["true", "false"])
     .transform((val) => val === "true")

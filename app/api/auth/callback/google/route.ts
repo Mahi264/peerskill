@@ -151,7 +151,7 @@ export async function GET(request: Request) {
           fullName: googleName || cleanEmail.split("@")[0],
           avatarUrl: null,
           branch: parsedEmail.branchName || null,
-          department: "",
+          graduationYear: parsedEmail.expectedGraduationYear || null,
         },
       });
     } else {
@@ -159,6 +159,7 @@ export async function GET(request: Request) {
         fullName?: string;
         avatarUrl?: string | null;
         branch?: string | null;
+        graduationYear?: number | null;
       } = {};
 
       if (googleName && user.profile.fullName !== googleName) {
@@ -166,6 +167,9 @@ export async function GET(request: Request) {
       }
       if (!user.profile.branch && parsedEmail.branchName) {
         profileUpdates.branch = parsedEmail.branchName;
+      }
+      if (!user.profile.graduationYear && parsedEmail.expectedGraduationYear) {
+        profileUpdates.graduationYear = parsedEmail.expectedGraduationYear;
       }
 
       if (Object.keys(profileUpdates).length > 0) {
@@ -188,7 +192,7 @@ export async function GET(request: Request) {
             fullName: googleName || cleanEmail.split("@")[0],
             avatarUrl: null,
             branch: parsedEmail.branchName || null,
-            department: "",
+            graduationYear: parsedEmail.expectedGraduationYear || null,
           },
         },
       },

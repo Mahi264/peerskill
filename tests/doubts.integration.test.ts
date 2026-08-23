@@ -35,7 +35,7 @@ function createRequest(url: string, method = "GET", body?: unknown, rawToken?: s
 
 describe("Doubts API (Integration - Real SQLite)", () => {
   beforeAll(() => {
-    execSync("npx prisma db push --skip-generate", {
+    execSync("npx prisma db push --skip-generate --accept-data-loss", {
       env: {
         ...process.env,
         DATABASE_URL: TEST_DB_URL,
@@ -70,7 +70,7 @@ describe("Doubts API (Integration - Real SQLite)", () => {
         profile: {
           create: {
             fullName: "Aarav Asker",
-            department: "Computer Science",
+            branch: "Computer Science & Engineering (CSE)",
           },
         },
       },

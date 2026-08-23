@@ -9,24 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { AlertBanner } from "@/components/ui/toast";
-import { OnboardingNodeConnectionSVG } from "@/components/ui/motion-illustrations";
 import { normalizeMitsDisplayName, parseMitsEmail } from "@/lib/mits-email";
-
-const DEPARTMENTS = [
-  "Computer Science",
-  "Information Technology",
-  "Electrical Engineering",
-  "Electronics & Communication",
-  "Mechanical Engineering",
-  "Civil Engineering",
-  "Chemical Engineering",
-  "Business Administration",
-  "Mathematics & Computing",
-  "Physics",
-  "Other",
-];
 
 const SEED_SKILLS = [
   "C++",
@@ -60,11 +44,12 @@ export default function OnboardingPage() {
   // User state
   const [userEmail, setUserEmail] = React.useState("");
 
-  // Step 1 Profile state (Institutional Google Identity + Academic Choice)
+  // Step 1 Profile state (Institutional Google Identity)
   const [fullName, setFullName] = React.useState("");
   const [avatarUrl, setAvatarUrl] = React.useState<string | null>(null);
-  const [department, setDepartment] = React.useState(DEPARTMENTS[0]);
+  const [batchYear, setBatchYear] = React.useState<number | null>(null);
   const [branch, setBranch] = React.useState("");
+  const [graduationYear, setGraduationYear] = React.useState<number | null>(null);
 
   // Step 2 Skills state (Mandatory 3+ skills, defaults level to INTERMEDIATE)
   const [skills, setSkills] = React.useState<SelectedSkill[]>([]);
@@ -99,9 +84,11 @@ export default function OnboardingPage() {
 
         // Parse verified institutional email for branch and batch
         const parsed = parseMitsEmail(email);
+        setBatchYear(parsed.batchYear);
 
-        // Populate existing profile details if returning PENDING user
-        let hasStep1Data = false;
+        const detectedBranch = parsed.branchName || "";
+        const expectedGraduation = parsed.expectedGraduationYear || (parsed.batchYear ? parsed.batchYear + 4 : null);
+
         if (u?.profile) {
           if (u.profile.fullName) {
             setFullName(normalizeMitsDisplayName(u.profile.fullName));
@@ -109,19 +96,23 @@ export default function OnboardingPage() {
           if (u.profile.avatarUrl) {
             setAvatarUrl(u.profile.avatarUrl);
           }
-          if (u.profile.department) {
-            setDepartment(u.profile.department);
-            hasStep1Data = true;
-          }
           if (u.profile.branch) {
             setBranch(u.profile.branch);
-          } else if (parsed.branchName) {
-            setBranch(parsed.branchName);
+          } else if (detectedBranch) {
+            setBranch(detectedBranch);
+          }
+          if (u.profile.graduationYear) {
+            setGraduationYear(u.profile.graduationYear);
+          } else if (expectedGraduation) {
+            setGraduationYear(expectedGraduation);
           }
         } else {
           setFullName(normalizeMitsDisplayName(email.split("@")[0]));
-          if (parsed.branchName) {
-            setBranch(parsed.branchName);
+          if (detectedBranch) {
+            setBranch(detectedBranch);
+          }
+          if (expectedGraduation) {
+            setGraduationYear(expectedGraduation);
           }
         }
 
@@ -132,11 +123,6 @@ export default function OnboardingPage() {
               level: us.level || "INTERMEDIATE",
             })),
           );
-        }
-
-        // If user already saved Step 1 profile (department chosen), advance to Step 2
-        if (hasStep1Data && u?.status === "PENDING") {
-          setStep(2);
         }
       } catch {
         setErrorMsg("Failed to verify user session.");
@@ -171,16 +157,10 @@ export default function OnboardingPage() {
     );
   };
 
-  // Step 1 Submit: Campus Identity & Department Selection
+  // Step 1 Submit: Confirm Campus Identity
   const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
-
-    if (!department) {
-      setErrorMsg("Department selection is required.");
-      return;
-    }
-
     setSubmitting(true);
 
     try {
@@ -188,8 +168,8 @@ export default function OnboardingPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          department,
           branch: branch.trim() || undefined,
+          graduationYear: graduationYear || undefined,
         }),
       });
 
@@ -311,113 +291,76 @@ export default function OnboardingPage() {
         {errorMsg && <AlertBanner variant="error" message={errorMsg} />}
 
         {/* STEP 1: Campus Identity */}
-        {step === 1 && (() => {
-          const parsedEmail = parseMitsEmail(userEmail);
-          return (
-            <Card className="p-6 sm:p-8 space-y-6 shadow-sm">
-              <CardHeader className="p-0 border-b border-[color:var(--color-border)]/60 pb-4">
-                <CardTitle className="text-xl">Step 1: Campus Identity</CardTitle>
-                <p className="text-xs text-[color:var(--color-text-muted)] mt-1">
-                  Your identity is verified through your institutional Google account. Confirm your department and program to continue.
-                </p>
-              </CardHeader>
+        {step === 1 && (
+          <Card className="p-6 sm:p-8 space-y-6 shadow-sm">
+            <CardHeader className="p-0 border-b border-[color:var(--color-border)]/60 pb-4">
+              <CardTitle className="text-xl">Step 1: Campus Identity</CardTitle>
+              <p className="text-xs text-[color:var(--color-text-muted)] mt-1">
+                Your identity is verified through your institutional Google account.
+              </p>
+            </CardHeader>
 
-              <CardContent className="p-0 pt-2 space-y-5">
-                {/* Verified Identity Card */}
-                <div className="rounded-xl border border-[color:var(--color-border)] bg-[color:var(--color-surface-muted)]/40 p-4 sm:p-5 flex items-start sm:items-center gap-4">
-                  <Avatar name={fullName || userEmail.split("@")[0]} src={avatarUrl} size="lg" />
-                  <div className="space-y-1 flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-lg sm:text-xl font-bold text-[color:var(--color-text)] truncate">
-                        {fullName || userEmail.split("@")[0]}
-                      </h2>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-semibold">
-                        <ShieldCheck className="size-3.5" />
-                        Verified via Google
-                      </span>
-                    </div>
-                    <p className="text-xs text-[color:var(--color-text-muted)]">
-                      {userEmail}
-                    </p>
+            <CardContent className="p-0 pt-2 space-y-5">
+              {/* Verified Identity Card */}
+              <div className="rounded-xl border border-[color:var(--color-border)] bg-[color:var(--color-surface-muted)]/40 p-4 sm:p-5 flex items-start sm:items-center gap-4">
+                <Avatar name={fullName || userEmail.split("@")[0]} src={avatarUrl} size="lg" />
+                <div className="space-y-1 flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-lg sm:text-xl font-bold text-[color:var(--color-text)] truncate">
+                      {fullName || userEmail.split("@")[0]}
+                    </h2>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-semibold">
+                      <ShieldCheck className="size-3.5" />
+                      Verified via Google
+                    </span>
                   </div>
+                  <p className="text-xs text-[color:var(--color-text-muted)]">
+                    {userEmail}
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleStep1Submit} className="space-y-5 pt-2">
+                {/* Batch Year */}
+                <div className="space-y-1.5">
+                  <label htmlFor="batchYear" className="text-sm font-semibold text-[color:var(--color-text)]">
+                    Batch Year
+                  </label>
+                  <Input
+                    id="batchYear"
+                    value={batchYear ? String(batchYear) : "Not specified"}
+                    disabled
+                    readOnly
+                    className="bg-[color:var(--color-surface-muted)] cursor-not-allowed text-[color:var(--color-text)] font-medium"
+                  />
                 </div>
 
-                {/* Auto-detected Academic Details Callout */}
-                {(parsedEmail.batchYear || parsedEmail.branchName) && (
-                  <div className="rounded-lg border border-[color:var(--color-primary)]/20 bg-[color:var(--color-surface-muted)]/30 px-4 py-3 space-y-1 text-xs text-[color:var(--color-text)]">
-                    <span className="font-semibold text-[color:var(--color-primary)] uppercase tracking-wider text-[10px] block mb-1">
-                      Detected from your MITS student ID:
+                {/* Branch / Program (Read-only automatically derived) */}
+                <div className="space-y-1.5">
+                  <label htmlFor="branch" className="text-sm font-semibold text-[color:var(--color-text)]">
+                    Branch / Program
+                  </label>
+                  <Input
+                    id="branch"
+                    value={branch || "Unresolved Program"}
+                    disabled
+                    readOnly
+                    className="bg-[color:var(--color-surface-muted)] cursor-not-allowed text-[color:var(--color-text)] font-medium"
+                  />
+                </div>
+
+                <div className="pt-4 flex justify-end">
+                  <Button type="submit" size="lg" disabled={submitting}>
+                    <span className="flex items-center gap-2">
+                      {submitting ? "Saving..." : "Continue to Skills"}
+                      <ArrowRight className="size-4" />
                     </span>
-                    {parsedEmail.batchYear && (
-                      <p className="flex items-center gap-1.5">
-                        <span className="text-[color:var(--color-text-muted)]">• Admission Batch:</span>
-                        <span className="font-semibold">Class of {parsedEmail.batchYear}</span>
-                      </p>
-                    )}
-                    {parsedEmail.branchName && (
-                      <p className="flex items-center gap-1.5">
-                        <span className="text-[color:var(--color-text-muted)]">• Detected Program:</span>
-                        <span className="font-semibold">{parsedEmail.branchName}</span>
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                <form onSubmit={handleStep1Submit} className="space-y-5 pt-2">
-                  {/* Department (Required) */}
-                  <div className="space-y-1.5">
-                    <label htmlFor="department" className="text-sm font-semibold text-[color:var(--color-text)]">
-                      Department <span className="text-[color:var(--color-danger)]">*</span>
-                    </label>
-                    <Select
-                      id="department"
-                      value={department}
-                      onChange={(e) => setDepartment(e.target.value)}
-                      disabled={submitting}
-                    >
-                      {DEPARTMENTS.map((dept) => (
-                        <option key={dept} value={dept}>
-                          {dept}
-                        </option>
-                      ))}
-                    </Select>
-                    <p className="text-[11px] text-[color:var(--color-text-muted)]">
-                      Select your primary academic department.
-                    </p>
-                  </div>
-
-                  {/* Branch / Program (Optional / Auto-populated) */}
-                  <div className="space-y-1.5">
-                    <label htmlFor="branch" className="text-sm font-semibold text-[color:var(--color-text)]">
-                      Branch / Program
-                    </label>
-                    <Input
-                      id="branch"
-                      placeholder="e.g. Computer Science & Engineering (CSE)"
-                      value={branch}
-                      onChange={(e) => setBranch(e.target.value)}
-                      disabled={submitting}
-                    />
-                    <p className="text-[11px] text-[color:var(--color-text-muted)]">
-                      {parsedEmail.branchName
-                        ? "Auto-detected from your MITS student email (editable if needed)."
-                        : "Could not be automatically detected from your email. Please select or enter your branch."}
-                    </p>
-                  </div>
-
-                  <div className="pt-4 flex justify-end">
-                    <Button type="submit" size="lg" disabled={submitting}>
-                      <span className="flex items-center gap-2">
-                        {submitting ? "Saving..." : "Continue to Skills"}
-                        <ArrowRight className="size-4" />
-                      </span>
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          );
-        })()}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
 
         {/* STEP 2: Skills & Activation */}
         {step === 2 && (
@@ -453,7 +396,6 @@ export default function OnboardingPage() {
                         <button
                           key={seedName}
                           type="button"
-                          disabled={submitting}
                           onClick={() => {
                             if (isSelected) {
                               handleRemoveSkill(seedName);
@@ -461,14 +403,18 @@ export default function OnboardingPage() {
                               handleAddSkill(seedName, "INTERMEDIATE");
                             }
                           }}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
                             isSelected
-                              ? "bg-[color:var(--color-primary)] text-white shadow-sm"
-                              : "bg-[color:var(--color-surface-muted)] text-[color:var(--color-text)] border border-[color:var(--color-border)] hover:border-[color:var(--color-primary)]/40"
+                              ? "bg-[color:var(--color-primary)] text-white border-[color:var(--color-primary)] shadow-sm"
+                              : "bg-[color:var(--color-surface)] text-[color:var(--color-text)] border-[color:var(--color-border)] hover:border-[color:var(--color-primary)]/40 hover:bg-[color:var(--color-surface-muted)]"
                           }`}
                         >
-                          {isSelected ? <Check className="size-3" /> : <Plus className="size-3" />}
-                          <span>{seedName}</span>
+                          {isSelected ? (
+                            <Check className="size-3.5" />
+                          ) : (
+                            <Plus className="size-3.5 text-[color:var(--color-text-muted)]" />
+                          )}
+                          {seedName}
                         </button>
                       );
                     })}
@@ -476,67 +422,80 @@ export default function OnboardingPage() {
                 </div>
 
                 {/* Custom Skill Input */}
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Type a custom skill..."
-                    value={customSkillInput}
-                    onChange={(e) => setCustomSkillInput(e.target.value)}
-                    disabled={submitting}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddSkill(customSkillInput, "INTERMEDIATE");
-                      }
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={submitting || !customSkillInput.trim()}
-                    onClick={() => handleAddSkill(customSkillInput, "INTERMEDIATE")}
-                  >
-                    Add Skill
-                  </Button>
+                <div className="space-y-2">
+                  <label htmlFor="custom-skill" className="text-xs font-bold uppercase tracking-wider text-[color:var(--color-text-muted)]">
+                    Add Custom Topic / Skill
+                  </label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="custom-skill"
+                      placeholder="e.g. Next.js, Discrete Math, Circuit Design..."
+                      value={customSkillInput}
+                      onChange={(e) => setCustomSkillInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddSkill(customSkillInput);
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleAddSkill(customSkillInput)}
+                      disabled={!customSkillInput.trim()}
+                    >
+                      <Plus className="size-4 mr-1" />
+                      Add
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Selected Skills List */}
-                <div className="space-y-2">
-                  <p className="text-xs font-bold uppercase tracking-wider text-[color:var(--color-text-muted)]">
-                    Selected Skills ({skills.length})
-                  </p>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold uppercase tracking-wider text-[color:var(--color-text-muted)]">
+                      Your Declared Skills ({skills.length})
+                    </p>
+                    <span className="text-[11px] text-[color:var(--color-text-muted)]">
+                      Minimum 3 required
+                    </span>
+                  </div>
 
                   {skills.length === 0 ? (
-                    <div className="p-4 text-center rounded-xl border border-dashed text-xs text-[color:var(--color-text-muted)]">
-                      No skills selected yet. Click skills above or type custom skills.
+                    <div className="p-6 rounded-xl border border-dashed border-[color:var(--color-border)] text-center text-xs text-[color:var(--color-text-muted)] bg-[color:var(--color-surface-muted)]/20">
+                      No skills added yet. Select from the options above or type a custom skill.
                     </div>
                   ) : (
-                    <div className="space-y-2">
-                      {skills.map((s) => (
+                    <div className="divide-y divide-[color:var(--color-border)]/50 border border-[color:var(--color-border)] rounded-xl bg-[color:var(--color-surface)] overflow-hidden">
+                      {skills.map((skill) => (
                         <div
-                          key={s.name}
-                          className="flex items-center justify-between gap-3 p-3 rounded-xl border border-[color:var(--color-border)] bg-white shadow-xs animate-pop-in transition-surface"
+                          key={skill.name}
+                          className="p-3 sm:p-3.5 flex items-center justify-between gap-3 bg-[color:var(--color-surface)] hover:bg-[color:var(--color-surface-muted)]/30 transition-colors"
                         >
-                          <div className="flex items-center gap-2">
-                            <Badge variant="skill">{s.name}</Badge>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-semibold text-sm text-[color:var(--color-text)] truncate">
+                              {skill.name}
+                            </span>
                           </div>
 
-                          <div className="flex items-center gap-3">
-                            <Select
-                              className="h-8 text-xs w-32 font-medium"
-                              value={s.level}
-                              onChange={(e) => handleLevelChange(s.name, e.target.value as LevelType)}
-                              disabled={submitting}
+                          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                            <select
+                              value={skill.level}
+                              onChange={(e) =>
+                                handleLevelChange(skill.name, e.target.value as LevelType)
+                              }
+                              className="text-xs font-medium bg-[color:var(--color-bg)] border border-[color:var(--color-border)] rounded-md px-2 py-1 text-[color:var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[color:var(--color-primary)] cursor-pointer"
                             >
-                              <option value="BEGINNER">BEGINNER</option>
-                              <option value="INTERMEDIATE">INTERMEDIATE</option>
-                              <option value="ADVANCED">ADVANCED</option>
-                              <option value="MENTOR">MENTOR</option>
-                            </Select>
+                              <option value="BEGINNER">Beginner</option>
+                              <option value="INTERMEDIATE">Intermediate</option>
+                              <option value="ADVANCED">Advanced</option>
+                              <option value="MENTOR">Mentor</option>
+                            </select>
 
                             <button
                               type="button"
-                              onClick={() => handleRemoveSkill(s.name)}
-                              disabled={submitting}
+                              onClick={() => handleRemoveSkill(skill.name)}
                               className="text-[color:var(--color-text-muted)] hover:text-[color:var(--color-danger)] transition-tactile active:scale-90 p-1 cursor-pointer"
                               title="Remove skill"
                             >
@@ -548,16 +507,6 @@ export default function OnboardingPage() {
                     </div>
                   )}
                 </div>
-
-                {/* Approved Whimsical SVG Moment #2: Onboarding Node Connection */}
-                {skills.length >= 3 && (
-                  <div className="py-2 text-center space-y-1 animate-in fade-in duration-300">
-                    <OnboardingNodeConnectionSVG />
-                    <p className="text-[11px] font-medium text-[color:var(--color-text-muted)]">
-                      Connecting your academic identity to the MITS peer graph
-                    </p>
-                  </div>
-                )}
 
                 <div className="pt-4 flex items-center justify-between border-t border-[color:var(--color-border)]/60">
                   <Button

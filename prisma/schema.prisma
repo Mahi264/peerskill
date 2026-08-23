@@ -49,7 +49,6 @@ model Profile {
   userId                 String     @id
   fullName               String
   avatarUrl              String?
-  department             String
   branch                 String?
   graduationYear         Int?
   section                String?

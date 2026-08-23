@@ -6,7 +6,6 @@ describe("Peer Search Validation Schema (peerSearchSchema)", () => {
   it("validates valid peer search query input", () => {
     const valid = {
       q: "Mohit",
-      department: "Computer Science",
       available: "true",
       level: "ADVANCED",
       page: "2",
@@ -15,7 +14,6 @@ describe("Peer Search Validation Schema (peerSearchSchema)", () => {
 
     const parsed = peerSearchSchema.parse(valid);
     expect(parsed.q).toBe("Mohit");
-    expect(parsed.department).toBe("Computer Science");
     expect(parsed.available).toBe(true);
     expect(parsed.level).toBe("ADVANCED");
     expect(parsed.page).toBe(2);

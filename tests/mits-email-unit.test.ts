@@ -1,20 +1,35 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeMitsDisplayName, parseMitsEmail } from "@/lib/mits-email";
+import {
+  getExpectedGraduationYear,
+  normalizeMitsDisplayName,
+  parseMitsEmail,
+} from "@/lib/mits-email";
 
-describe("MITS Email Parser (Academic Identity)", () => {
-  it("parses known CSE email correctly", () => {
+describe("MITS Email Parser (Academic Identity & Graduation Calculation)", () => {
+  it("parses known CSE email correctly and computes expected graduation year (2024 batch -> 2028 graduation)", () => {
     const res = parseMitsEmail("24cs10mo80@mitsgwl.ac.in");
     expect(res.isValidDomain).toBe(true);
     expect(res.batchYear).toBe(2024);
+    expect(res.expectedGraduationYear).toBe(2028);
+    expect(res.expectedGraduationYear).not.toBe(res.batchYear);
     expect(res.branchCode).toBe("cs");
     expect(res.branchName).toBe("Computer Science & Engineering (CSE)");
+  });
+
+  it("calculates expected graduation year as batchYear + 4 for 4-year B.Tech programs", () => {
+    expect(getExpectedGraduationYear(2024)).toBe(2028);
+    expect(getExpectedGraduationYear(2025)).toBe(2029);
+    expect(getExpectedGraduationYear(2023)).toBe(2027);
+    expect(getExpectedGraduationYear(null)).toBeNull();
+    expect(getExpectedGraduationYear(undefined)).toBeNull();
   });
 
   it("parses known CSD email correctly", () => {
     const res = parseMitsEmail("24cd3dsu4@mitsgwl.ac.in");
     expect(res.isValidDomain).toBe(true);
     expect(res.batchYear).toBe(2024);
+    expect(res.expectedGraduationYear).toBe(2028);
     expect(res.branchCode).toBe("cd");
     expect(res.branchName).toBe("Computer Science & Design (CSD)");
   });
@@ -23,6 +38,7 @@ describe("MITS Email Parser (Academic Identity)", () => {
     const res = parseMitsEmail("24it3dam3@mitsgwl.ac.in");
     expect(res.isValidDomain).toBe(true);
     expect(res.batchYear).toBe(2024);
+    expect(res.expectedGraduationYear).toBe(2028);
     expect(res.branchCode).toBe("it");
     expect(res.branchName).toBe("Information Technology (IT)");
   });
@@ -31,6 +47,7 @@ describe("MITS Email Parser (Academic Identity)", () => {
     const res = parseMitsEmail("25mc1ar22@mitsgwl.ac.in");
     expect(res.isValidDomain).toBe(true);
     expect(res.batchYear).toBe(2025);
+    expect(res.expectedGraduationYear).toBe(2029);
     expect(res.branchCode).toBe("mc");
     expect(res.branchName).toBe("Mathematics & Computing");
   });
@@ -39,6 +56,7 @@ describe("MITS Email Parser (Academic Identity)", () => {
     const res = parseMitsEmail("25am1pe49@mitsgwl.ac.in");
     expect(res.isValidDomain).toBe(true);
     expect(res.batchYear).toBe(2025);
+    expect(res.expectedGraduationYear).toBe(2029);
     expect(res.branchCode).toBe("am");
     expect(res.branchName).toBe("Artificial Intelligence & Machine Learning (AI-ML)");
   });
@@ -47,6 +65,7 @@ describe("MITS Email Parser (Academic Identity)", () => {
     const res = parseMitsEmail("25ad1su72@mitsgwl.ac.in");
     expect(res.isValidDomain).toBe(true);
     expect(res.batchYear).toBe(2025);
+    expect(res.expectedGraduationYear).toBe(2029);
     expect(res.branchCode).toBe("ad");
     expect(res.branchName).toBe("Artificial Intelligence & Data Science (AI-DS)");
   });
@@ -55,6 +74,7 @@ describe("MITS Email Parser (Academic Identity)", () => {
     const res = parseMitsEmail("25io1sn125@mitsgwl.ac.in");
     expect(res.isValidDomain).toBe(true);
     expect(res.batchYear).toBe(2025);
+    expect(res.expectedGraduationYear).toBe(2029);
     expect(res.branchCode).toBe("io");
     expect(res.branchName).toBe("Internet of Things (IoT)");
   });
@@ -63,6 +83,7 @@ describe("MITS Email Parser (Academic Identity)", () => {
     const res = parseMitsEmail("24ai10sh65@mitsgwl.ac.in");
     expect(res.isValidDomain).toBe(true);
     expect(res.batchYear).toBe(2024);
+    expect(res.expectedGraduationYear).toBe(2028);
     expect(res.branchCode).toBe("ai");
     expect(res.branchName).toBe("Artificial Intelligence (AI)");
   });
@@ -71,6 +92,7 @@ describe("MITS Email Parser (Academic Identity)", () => {
     const res = parseMitsEmail("0101cs241065@mitsgwl.ac.in");
     expect(res.isValidDomain).toBe(true);
     expect(res.batchYear).toBe(2024);
+    expect(res.expectedGraduationYear).toBe(2028);
     expect(res.branchCode).toBe("cs");
     expect(res.branchName).toBe("Computer Science & Engineering (CSE)");
   });
@@ -79,6 +101,7 @@ describe("MITS Email Parser (Academic Identity)", () => {
     const res = parseMitsEmail("24zz99xx@mitsgwl.ac.in");
     expect(res.isValidDomain).toBe(true);
     expect(res.batchYear).toBe(2024);
+    expect(res.expectedGraduationYear).toBe(2028);
     expect(res.branchCode).toBe("zz");
     expect(res.branchName).toBeNull();
   });
@@ -87,6 +110,7 @@ describe("MITS Email Parser (Academic Identity)", () => {
     const res = parseMitsEmail("student@gmail.com");
     expect(res.isValidDomain).toBe(false);
     expect(res.batchYear).toBeNull();
+    expect(res.expectedGraduationYear).toBeNull();
     expect(res.branchCode).toBeNull();
     expect(res.branchName).toBeNull();
   });

@@ -10,24 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertBanner } from "@/components/ui/toast";
-
-const DEPARTMENTS = [
-  "Computer Science",
-  "Information Technology",
-  "Electrical Engineering",
-  "Electronics & Communication",
-  "Mechanical Engineering",
-  "Civil Engineering",
-  "Chemical Engineering",
-  "Business Administration",
-  "Mathematics & Computing",
-  "Physics",
-  "Other",
-];
+import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
 
 const SEED_SKILLS = [
   "C++",
@@ -52,7 +38,6 @@ interface SelectedSkill {
 
 interface ProfileData {
   fullName: string;
-  department: string;
   branch?: string | null;
   graduationYear?: number | null;
   section?: string | null;
@@ -83,9 +68,8 @@ export default function ProfilePage() {
 
   // Profile Form state
   const [fullName, setFullName] = React.useState("");
-  const [department, setDepartment] = React.useState(DEPARTMENTS[0]);
   const [branch, setBranch] = React.useState("");
-  const [graduationYear, setGraduationYear] = React.useState<number | "">(2027);
+  const [graduationYear, setGraduationYear] = React.useState<number | "">("");
   const [section, setSection] = React.useState("");
   const [bio, setBio] = React.useState("");
 
@@ -122,7 +106,6 @@ export default function ProfilePage() {
         const p: ProfileData | undefined = u?.profile;
         if (p) {
           if (p.fullName) setFullName(p.fullName);
-          if (p.department) setDepartment(p.department);
           if (p.branch) setBranch(p.branch || "");
           if (p.graduationYear) setGraduationYear(p.graduationYear);
           if (p.section) setSection(p.section || "");
@@ -142,7 +125,7 @@ export default function ProfilePage() {
           );
         }
       } catch {
-        setErrorMsg("Failed to load profile settings.");
+        setErrorMsg("Failed to load profile details.");
       } finally {
         setLoading(false);
       }
@@ -154,13 +137,14 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
-    } finally {
-      router.replace("/");
+      router.push("/");
+    } catch {
+      router.push("/");
     }
   };
 
-  // Skill management helpers
-  const handleAddSkill = (skillName: string, level: LevelType = "BEGINNER") => {
+  // Skill Management
+  const handleAddSkill = (skillName: string, level: LevelType = "INTERMEDIATE") => {
     const clean = skillName.trim();
     if (!clean) return;
 
@@ -201,7 +185,6 @@ export default function ProfilePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           fullName: fullName.trim(),
-          department,
           branch: branch.trim() || undefined,
           graduationYear: graduationYear ? Number(graduationYear) : undefined,
           section: section.trim() || undefined,
@@ -347,14 +330,19 @@ export default function ProfilePage() {
   }
 
   const profileHeaderName = fullName || "Student Profile";
+  const academicSubtitle = formatPublicPeerAcademicSubtitle({
+    branch,
+    section,
+    graduationYear: graduationYear ? Number(graduationYear) : null,
+  });
 
   return (
-    <AppShell user={user} profile={{ fullName, department }} onLogout={handleLogout}>
+    <AppShell user={user} profile={{ fullName }} onLogout={handleLogout}>
       <div className="space-y-8">
         {/* Profile Header Panel */}
         <Card className="p-6 sm:p-8 bg-gradient-to-r from-white via-white to-[color:var(--color-surface-muted)]/40">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-            <Avatar name={profileHeaderName} department={department} size="xl" />
+            <Avatar name={profileHeaderName} size="xl" />
 
             <div className="space-y-1.5 flex-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -370,8 +358,7 @@ export default function ProfilePage() {
               </div>
 
               <p className="text-sm font-medium text-[color:var(--color-text-muted)]">
-                {department} {branch ? `• ${branch}` : ""}{" "}
-                {graduationYear ? `• Class of ${graduationYear}` : ""}
+                {academicSubtitle}
               </p>
 
               {bio && (
@@ -472,39 +459,25 @@ export default function ProfilePage() {
                     </p>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label htmlFor="department" className="text-sm font-medium text-[color:var(--color-text)]">
-                      Department
-                    </label>
-                    <Select
-                      id="department"
-                      value={department}
-                      onChange={(e) => setDepartment(e.target.value)}
-                      disabled={saving}
-                    >
-                      {DEPARTMENTS.map((dept) => (
-                        <option key={dept} value={dept}>
-                          {dept}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 sm:col-span-2">
                     <label htmlFor="branch" className="text-sm font-medium text-[color:var(--color-text)]">
-                      Branch
+                      Branch / Program
                     </label>
                     <Input
                       id="branch"
-                      value={branch}
-                      onChange={(e) => setBranch(e.target.value)}
-                      disabled={saving}
+                      value={branch || "Unresolved Program"}
+                      disabled
+                      readOnly
+                      className="bg-[color:var(--color-surface-muted)] cursor-not-allowed opacity-90 font-medium"
                     />
+                    <p className="text-[11px] text-[color:var(--color-text-muted)]">
+                      Automatically derived from your verified MITS institutional email.
+                    </p>
                   </div>
 
                   <div className="space-y-1.5">
                     <label htmlFor="graduationYear" className="text-sm font-medium text-[color:var(--color-text)]">
-                      Graduation Year
+                      Expected Graduation Year
                     </label>
                     <Input
                       id="graduationYear"
@@ -514,6 +487,7 @@ export default function ProfilePage() {
                         setGraduationYear(e.target.value ? Number(e.target.value) : "")
                       }
                       disabled={saving}
+                      placeholder="e.g. 2028"
                     />
                   </div>
 
@@ -526,6 +500,7 @@ export default function ProfilePage() {
                       value={section}
                       onChange={(e) => setSection(e.target.value)}
                       disabled={saving}
+                      placeholder="e.g. A, B, C"
                     />
                   </div>
                 </div>
@@ -546,6 +521,7 @@ export default function ProfilePage() {
                     onChange={(e) => setBio(e.target.value)}
                     disabled={saving}
                     rows={4}
+                    placeholder="Describe what you are working on, study interests, or how peers can connect..."
                   />
                 </div>
 
@@ -569,29 +545,37 @@ export default function ProfilePage() {
 
                 {/* Seed Skills */}
                 <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-[color:var(--color-text-muted)]">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-[color:var(--color-text-muted)]">
                     Quick-Add Campus Skills
-                  </label>
+                  </p>
                   <div className="flex flex-wrap gap-2">
                     {SEED_SKILLS.map((seedName) => {
-                      const isAdded = skills.some(
+                      const isSelected = skills.some(
                         (s) => s.name.toLowerCase() === seedName.toLowerCase(),
                       );
                       return (
                         <button
                           key={seedName}
                           type="button"
-                          onClick={() =>
-                            isAdded ? handleRemoveSkill(seedName) : handleAddSkill(seedName)
-                          }
-                          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-all ${
-                            isAdded
-                              ? "bg-[color:var(--color-primary)] text-white shadow-sm"
-                              : "border border-[color:var(--color-border)] bg-white text-[color:var(--color-text)] hover:bg-[color:var(--color-surface-muted)]"
+                          onClick={() => {
+                            if (isSelected) {
+                              handleRemoveSkill(seedName);
+                            } else {
+                              handleAddSkill(seedName, "INTERMEDIATE");
+                            }
+                          }}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                            isSelected
+                              ? "bg-[color:var(--color-primary)] text-white border-[color:var(--color-primary)] shadow-sm"
+                              : "bg-[color:var(--color-surface)] text-[color:var(--color-text)] border-[color:var(--color-border)] hover:border-[color:var(--color-primary)]/40 hover:bg-[color:var(--color-surface-muted)]"
                           }`}
                         >
-                          {isAdded ? <Check className="size-3" /> : <Plus className="size-3" />}
-                          <span>{seedName}</span>
+                          {isSelected ? (
+                            <Check className="size-3.5" />
+                          ) : (
+                            <Plus className="size-3.5 text-[color:var(--color-text-muted)]" />
+                          )}
+                          {seedName}
                         </button>
                       );
                     })}
@@ -599,66 +583,95 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Custom Skill Input */}
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Add custom skill..."
-                    value={customSkillInput}
-                    onChange={(e) => setCustomSkillInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddSkill(customSkillInput);
-                      }
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => handleAddSkill(customSkillInput)}
-                  >
-                    Add Tag
-                  </Button>
+                <div className="space-y-2">
+                  <label htmlFor="customSkillInput" className="text-xs font-semibold uppercase tracking-wider text-[color:var(--color-text-muted)]">
+                    Add Custom Topic / Skill
+                  </label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="customSkillInput"
+                      placeholder="e.g. Next.js, Cloud Computing, VLSI..."
+                      value={customSkillInput}
+                      onChange={(e) => setCustomSkillInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddSkill(customSkillInput);
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => handleAddSkill(customSkillInput)}
+                      disabled={!customSkillInput.trim()}
+                    >
+                      <Plus className="size-4 mr-1" />
+                      Add
+                    </Button>
+                  </div>
                 </div>
 
-                {/* Skills List */}
-                <div className="space-y-2">
-                  {skills.map((skill) => (
-                    <div
-                      key={skill.name}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[color:var(--color-border)] bg-white p-3.5 shadow-sm"
-                    >
-                      <Badge variant="skill">{skill.name}</Badge>
+                {/* Selected Skills List */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-[color:var(--color-text-muted)]">
+                      Configured Skills ({skills.length})
+                    </p>
+                    <span className="text-[11px] text-[color:var(--color-text-muted)]">
+                      Minimum 3 required
+                    </span>
+                  </div>
 
-                      <div className="flex items-center gap-2">
-                        <Select
-                          value={skill.level}
-                          onChange={(e) =>
-                            handleLevelChange(skill.name, e.target.value as LevelType)
-                          }
-                          className="h-9 text-xs font-medium w-36 px-2.5 py-1 flex items-center leading-normal"
-                        >
-                          <option value="BEGINNER">Beginner</option>
-                          <option value="INTERMEDIATE">Intermediate</option>
-                          <option value="ADVANCED">Advanced</option>
-                          <option value="MENTOR">Mentor</option>
-                        </Select>
-
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSkill(skill.name)}
-                          className="text-[color:var(--color-text-muted)] hover:text-[color:var(--color-danger)] p-1"
-                          aria-label={`Remove ${skill.name}`}
-                        >
-                          <X className="size-4" />
-                        </button>
-                      </div>
+                  {skills.length === 0 ? (
+                    <div className="p-6 rounded-xl border border-dashed border-[color:var(--color-border)] text-center text-xs text-[color:var(--color-text-muted)] bg-[color:var(--color-surface-muted)]/20">
+                      No skills added yet. Select from the quick-add options above or type a custom skill.
                     </div>
-                  ))}
+                  ) : (
+                    <div className="divide-y divide-[color:var(--color-border)]/50 border border-[color:var(--color-border)] rounded-xl bg-[color:var(--color-surface)] overflow-hidden">
+                      {skills.map((skill) => (
+                        <div
+                          key={skill.name}
+                          className="p-3 sm:p-3.5 flex items-center justify-between gap-3 bg-[color:var(--color-surface)] hover:bg-[color:var(--color-surface-muted)]/30 transition-colors"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-semibold text-sm text-[color:var(--color-text)] truncate">
+                              {skill.name}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                            <select
+                              value={skill.level}
+                              onChange={(e) =>
+                                handleLevelChange(skill.name, e.target.value as LevelType)
+                              }
+                              className="text-xs font-medium bg-[color:var(--color-bg)] border border-[color:var(--color-border)] rounded-md px-2 py-1 text-[color:var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[color:var(--color-primary)] cursor-pointer"
+                            >
+                              <option value="BEGINNER">Beginner</option>
+                              <option value="INTERMEDIATE">Intermediate</option>
+                              <option value="ADVANCED">Advanced</option>
+                              <option value="MENTOR">Mentor</option>
+                            </select>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSkill(skill.name)}
+                              className="text-[color:var(--color-text-muted)] hover:text-[color:var(--color-danger)] transition-tactile active:scale-90 p-1 cursor-pointer"
+                              title="Remove skill"
+                            >
+                              <X className="size-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="pt-2 flex justify-end">
                   <Button type="submit" size="lg" disabled={saving || skills.length < 3}>
-                    {saving ? "Saving..." : "Save Skills Index"}
+                    {saving ? "Saving..." : "Save Skills"}
                   </Button>
                 </div>
               </form>
@@ -666,87 +679,93 @@ export default function ProfilePage() {
 
             {/* TAB 3: Availability & Privacy */}
             {activeTab === "privacy" && (
-              <form onSubmit={handleSavePrivacy} className="space-y-6">
+              <form onSubmit={handleSavePrivacy} className="space-y-8">
                 <CardHeader className="p-0 pb-2">
-                  <CardTitle className="text-xl">Help Status & Visibility Controls</CardTitle>
+                  <CardTitle className="text-xl">Peer Help Availability</CardTitle>
                 </CardHeader>
 
-                <div className="space-y-4 rounded-xl border border-[color:var(--color-border)] bg-[color:var(--color-surface-muted)]/30 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-[color:var(--color-text)]">
-                        Available to Help Peers
-                      </p>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 rounded-xl border border-[color:var(--color-border)] bg-[color:var(--color-surface-muted)]/30">
+                    <div className="space-y-0.5">
+                      <label htmlFor="helpAvailable" className="text-sm font-semibold text-[color:var(--color-text)]">
+                        Available to help peers
+                      </label>
                       <p className="text-xs text-[color:var(--color-text-muted)]">
-                        Show your profile in peer mentor recommendations across campus.
+                        When enabled, your profile appears as active and open to doubt requests in campus search.
                       </p>
                     </div>
                     <Switch
+                      id="helpAvailable"
                       checked={helpAvailable}
                       onCheckedChange={setHelpAvailable}
-                      disabled={saving}
                     />
                   </div>
 
-                  {helpAvailable && (
-                    <div className="space-y-1.5 pt-2 border-t border-[color:var(--color-border)]/60">
-                      <label htmlFor="helpStatus" className="text-xs font-medium text-[color:var(--color-text)]">
-                        Custom Availability Message
-                      </label>
-                      <Input
-                        id="helpStatus"
-                        placeholder="e.g. Free after 5 PM / Exam prep mode"
-                        value={helpStatus}
-                        onChange={(e) => setHelpStatus(e.target.value)}
-                        disabled={saving}
-                      />
-                    </div>
-                  )}
+                  <div className="space-y-1.5">
+                    <label htmlFor="helpStatus" className="text-sm font-medium text-[color:var(--color-text)]">
+                      Status Message (Optional)
+                    </label>
+                    <Input
+                      id="helpStatus"
+                      placeholder="e.g. In CSE Lab after 4 PM, free for React/DSA questions"
+                      value={helpStatus}
+                      onChange={(e) => setHelpStatus(e.target.value)}
+                      disabled={saving || !helpAvailable}
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-[color:var(--color-text)]">
-                      Contact Information Visibility
-                    </label>
-                    <Select
-                      value={contactVisibility}
-                      onChange={(e) =>
-                        setContactVisibility(
-                          e.target.value as "NOBODY" | "CONNECTIONS" | "COLLEGE",
-                        )
-                      }
-                      disabled={saving}
-                    >
-                      <option value="CONNECTIONS">Connections Only</option>
-                      <option value="COLLEGE">Entire College Network</option>
-                      <option value="NOBODY">Nobody</option>
-                    </Select>
-                  </div>
+                <div className="space-y-4 pt-4 border-t border-[color:var(--color-border)]">
+                  <CardHeader className="p-0 pb-2">
+                    <CardTitle className="text-xl">Campus Visibility & Contacts</CardTitle>
+                  </CardHeader>
 
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-[color:var(--color-text)]">
-                      Chat Request Visibility
-                    </label>
-                    <Select
-                      value={chatRequestVisibility}
-                      onChange={(e) =>
-                        setChatRequestVisibility(
-                          e.target.value as "NOBODY" | "CONNECTIONS" | "COLLEGE",
-                        )
-                      }
-                      disabled={saving}
-                    >
-                      <option value="CONNECTIONS">Connections Only</option>
-                      <option value="COLLEGE">Entire College Network</option>
-                      <option value="NOBODY">Nobody</option>
-                    </Select>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label htmlFor="contactVisibility" className="text-sm font-medium text-[color:var(--color-text)]">
+                        Who can view your contact information?
+                      </label>
+                      <select
+                        id="contactVisibility"
+                        value={contactVisibility}
+                        onChange={(e) =>
+                          setContactVisibility(
+                            e.target.value as "NOBODY" | "CONNECTIONS" | "COLLEGE",
+                          )
+                        }
+                        className="w-full text-sm bg-[color:var(--color-bg)] border border-[color:var(--color-border)] rounded-lg p-2.5 text-[color:var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[color:var(--color-primary)]"
+                      >
+                        <option value="COLLEGE">All Verified MITS Students</option>
+                        <option value="CONNECTIONS">Mutual Peer Connections Only</option>
+                        <option value="NOBODY">Private (Only Me)</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label htmlFor="chatRequestVisibility" className="text-sm font-medium text-[color:var(--color-text)]">
+                        Who can send direct chat/collaboration requests?
+                      </label>
+                      <select
+                        id="chatRequestVisibility"
+                        value={chatRequestVisibility}
+                        onChange={(e) =>
+                          setChatRequestVisibility(
+                            e.target.value as "NOBODY" | "CONNECTIONS" | "COLLEGE",
+                          )
+                        }
+                        className="w-full text-sm bg-[color:var(--color-bg)] border border-[color:var(--color-border)] rounded-lg p-2.5 text-[color:var(--color-text)] focus:outline-none focus:ring-1 focus:ring-[color:var(--color-primary)]"
+                      >
+                        <option value="COLLEGE">All Verified MITS Students</option>
+                        <option value="CONNECTIONS">Mutual Peer Connections Only</option>
+                        <option value="NOBODY">Nobody</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
                 <div className="pt-2 flex justify-end">
                   <Button type="submit" size="lg" disabled={saving}>
-                    {saving ? "Saving..." : "Save Preferences"}
+                    {saving ? "Saving..." : "Save Privacy & Availability"}
                   </Button>
                 </div>
               </form>

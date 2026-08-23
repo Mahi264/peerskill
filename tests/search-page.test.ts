@@ -33,7 +33,7 @@ describe("Dedicated Knowledge Search Page (app/search/page.tsx)", () => {
               JSON.stringify({
                 data: {
                   user: { id: "u-1", email: "user@mitsgwl.ac.in", status: "ACTIVE" },
-                  profile: { fullName: "Aarav Sharma", department: "CSE" },
+                  profile: { fullName: "Aarav Sharma" },
                 },
               }),
               { status: 200 },

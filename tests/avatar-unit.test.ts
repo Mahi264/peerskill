@@ -66,7 +66,6 @@ describe("PeerSkill Canonical Avatar Strategy (Unit Tests)", () => {
       const { container } = render(
         React.createElement(Avatar, {
           name: "MOHIT SHARMA",
-          department: "Computer Science",
           src: "https://lh3.googleusercontent.com/a/generated-B-icon",
         }),
       );
@@ -80,7 +79,6 @@ describe("PeerSkill Canonical Avatar Strategy (Unit Tests)", () => {
       render(
         React.createElement(Avatar, {
           name: "BTCS24O1080 MOHIT SHARMA",
-          department: "Computer Science",
         }),
       );
 
@@ -91,7 +89,6 @@ describe("PeerSkill Canonical Avatar Strategy (Unit Tests)", () => {
       const { container } = render(
         React.createElement(Avatar, {
           name: "MOHIT SHARMA",
-          department: "Computer Science",
           src: "https://cdn.peerskill.campus/photos/real-photo.jpg",
         }),
       );

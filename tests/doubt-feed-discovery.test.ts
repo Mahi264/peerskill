@@ -30,7 +30,6 @@ describe("Doubt Discovery Feed & Detail Page Architecture", () => {
           id: string;
           email: string;
           fullName: string;
-          department: string;
           branch: string;
           section: string;
           graduationYear: number;
@@ -48,7 +47,6 @@ describe("Doubt Discovery Feed & Detail Page Architecture", () => {
           id: "u-1",
           email: "msharma@mitsgwl.ac.in",
           fullName: "Mohit Sharma",
-          department: "CSE",
           branch: "Computer Science & Engineering (CSE)",
           section: "A",
           graduationYear: 2028,

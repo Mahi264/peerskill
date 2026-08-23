@@ -161,7 +161,6 @@ export async function searchKnowledge(input: KnowledgeSearchInput) {
       id: doubt.author.id,
       email: doubt.author.email,
       fullName: doubt.author.profile?.fullName || doubt.author.email.split("@")[0],
-      department: doubt.author.profile?.department || "MITS Student",
       branch: doubt.author.profile?.branch || null,
       section: doubt.author.profile?.section || null,
       graduationYear: doubt.author.profile?.graduationYear || null,

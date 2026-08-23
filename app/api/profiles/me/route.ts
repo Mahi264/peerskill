@@ -69,7 +69,6 @@ export async function PATCH(request: Request) {
 
   const {
     fullName: requestedFullName,
-    department,
     branch,
     graduationYear,
     section,
@@ -93,20 +92,18 @@ export async function PATCH(request: Request) {
     create: {
       userId: user.id,
       fullName: effectiveFullName,
-      department,
-      branch: branch || null,
-      graduationYear: graduationYear || null,
+      branch: existingProfile?.branch || branch || null,
+      graduationYear: existingProfile?.graduationYear || graduationYear || null,
       section: section || null,
       bio: bio || null,
       avatarUrl: effectiveAvatarUrl,
     },
     update: {
       fullName: existingProfile?.fullName || effectiveFullName,
-      department,
-      branch: branch || null,
-      graduationYear: graduationYear || null,
-      section: section || null,
-      bio: bio || null,
+      branch: existingProfile?.branch || branch || null,
+      graduationYear: graduationYear !== undefined ? graduationYear : existingProfile?.graduationYear,
+      section: section !== undefined ? section : existingProfile?.section,
+      bio: bio !== undefined ? bio : existingProfile?.bio,
       avatarUrl: effectiveAvatarUrl,
     },
   });
@@ -118,7 +115,6 @@ export async function PATCH(request: Request) {
           userId: profile.userId,
           fullName: profile.fullName,
           avatarUrl: profile.avatarUrl,
-          department: profile.department,
           branch: profile.branch,
           graduationYear: profile.graduationYear,
           section: profile.section,

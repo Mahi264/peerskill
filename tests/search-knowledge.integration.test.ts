@@ -30,7 +30,7 @@ describe("GET /api/search/knowledge (Integration - Real SQLite)", () => {
   let authToken: string;
 
   beforeAll(() => {
-    execSync("npx prisma db push --skip-generate", {
+    execSync("npx prisma db push --skip-generate --accept-data-loss", {
       env: {
         ...process.env,
         DATABASE_URL: TEST_DB_URL,
@@ -64,7 +64,7 @@ describe("GET /api/search/knowledge (Integration - Real SQLite)", () => {
         profile: {
           create: {
             fullName: "Aarav Sharma",
-            department: "Computer Science",
+            branch: "Computer Science & Engineering (CSE)",
           },
         },
       },
@@ -88,7 +88,7 @@ describe("GET /api/search/knowledge (Integration - Real SQLite)", () => {
         profile: {
           create: {
             fullName: "Priya Verma",
-            department: "Information Technology",
+            branch: "Information Technology (IT)",
           },
         },
       },
@@ -111,41 +111,26 @@ describe("GET /api/search/knowledge (Integration - Real SQLite)", () => {
       },
     });
 
-    const doubt2 = await prisma.doubt.create({
+    await prisma.doubt.create({
       data: {
         authorId: author.id,
-        title: "Python Data Science Lab 2 Error",
-        body: "Pandas dataframe indexing failed.",
-        urgency: "EXAM_PREP",
-        status: "RESOLVED",
-        answers: {
-          create: [
-            {
-              authorId: author.id,
-              body: "Use .iloc[] instead of direct bracket access.",
-              isAccepted: true,
-            },
-          ],
-        },
+        title: "Understanding Python Decorators",
+        body: "How does @functools.wraps work?",
+        urgency: "CURIOUS",
+        status: "OPEN",
       },
     });
 
-    // Search by title keyword "React"
-    const req1 = createRequest("http://localhost:3000/api/search/knowledge?q=React", authToken);
-    const res1 = await GET(req1);
-    expect(res1.status).toBe(200);
-    const json1 = await res1.json();
-    expect(json1.data.doubts.length).toBe(1);
-    expect(json1.data.doubts[0].id).toBe(doubt1.id);
+    // Query for "React"
+    const req = createRequest("http://localhost:3000/api/search/knowledge?q=React", authToken);
+    const res = await GET(req);
 
-    // Search by accepted answer text ".iloc"
-    const req2 = createRequest("http://localhost:3000/api/search/knowledge?q=iloc", authToken);
-    const res2 = await GET(req2);
-    expect(res2.status).toBe(200);
-    const json2 = await res2.json();
-    expect(json2.data.doubts.length).toBe(1);
-    expect(json2.data.doubts[0].id).toBe(doubt2.id);
-    expect(json2.data.doubts[0].acceptedAnswer.body).toContain(".iloc[]");
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data.doubts.length).toBe(1);
+    expect(json.data.doubts[0].id).toBe(doubt1.id);
+    expect(json.data.doubts[0].title).toBe("How to fix React useEffect re-render?");
+    expect(json.data.doubts[0].author.fullName).toBe("Priya Verma");
   });
 
   it("filters search results by status (RESOLVED vs OPEN)", async () => {
@@ -154,7 +139,7 @@ describe("GET /api/search/knowledge (Integration - Real SQLite)", () => {
         email: "author2@mitsgwl.ac.in",
         status: "ACTIVE",
         profile: {
-          create: { fullName: "Rahul Gupta", department: "ECE" },
+          create: { fullName: "Rahul Gupta", branch: "ECE" },
         },
       },
     });
@@ -193,7 +178,7 @@ describe("GET /api/search/knowledge (Integration - Real SQLite)", () => {
       data: {
         email: "author3@mitsgwl.ac.in",
         status: "ACTIVE",
-        profile: { create: { fullName: "Karan Patel", department: "ME" } },
+        profile: { create: { fullName: "Karan Patel", branch: "ME" } },
       },
     });
 

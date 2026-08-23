@@ -99,7 +99,6 @@ export async function PATCH(request: Request) {
           userId: profile.userId,
           fullName: profile.fullName,
           avatarUrl: profile.avatarUrl,
-          department: profile.department,
           branch: profile.branch,
           graduationYear: profile.graduationYear,
           section: profile.section,

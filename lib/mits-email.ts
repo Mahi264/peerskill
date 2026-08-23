@@ -1,6 +1,7 @@
 export interface MitsEmailParseResult {
   isValidDomain: boolean;
   batchYear: number | null;
+  expectedGraduationYear: number | null;
   branchCode: string | null;
   branchName: string | null;
 }
@@ -26,16 +27,29 @@ export const MITS_BRANCH_MAP: Record<string, string> = {
 };
 
 /**
+ * Computes expected graduation year from batch (admission) year for standard 4-year B.Tech programs.
+ * Example:
+ * Batch 2024 -> Expected Graduation 2028 (Class of 2028).
+ */
+export function getExpectedGraduationYear(batchYear: number | null | undefined): number | null {
+  if (!batchYear || typeof batchYear !== "number" || batchYear < 2000 || batchYear > 2100) {
+    return null;
+  }
+  return batchYear + 4;
+}
+
+/**
  * Parses a verified MITS email address (@mitsgwl.ac.in) to extract
- * batch year and program/branch.
+ * batch year, expected graduation year, and program/branch.
  *
  * Supported Patterns:
  * 1. Standard Short Format: 24cs10mo80@mitsgwl.ac.in, 25mc1ar22@mitsgwl.ac.in, 23it10un71@mitsgwl.ac.in
- *    - Leading 2 digits: YY (e.g. 24 -> 2024)
+ *    - Leading 2 digits: YY (e.g. 24 -> 2024 batch)
+ *    - Expected graduation for standard 4-year B.Tech: 2024 + 4 = 2028 (Class of 2028)
  *    - Next 2-3 letters: branch code (e.g. cs, mc, it, am, ad, io, ai, cd)
  *
  * 2. Institutional Roll Format: 0101cs241065@mitsgwl.ac.in
- *    - 0101 prefix + branch code + 2 digits batch year (24 -> 2024)
+ *    - 0101 prefix + branch code + 2 digits batch year (24 -> 2024 batch, 2028 graduation)
  */
 export function parseMitsEmail(email: string): MitsEmailParseResult {
   const clean = (email || "").trim().toLowerCase();
@@ -45,6 +59,7 @@ export function parseMitsEmail(email: string): MitsEmailParseResult {
     return {
       isValidDomain: false,
       batchYear: null,
+      expectedGraduationYear: null,
       branchCode: null,
       branchName: null,
     };
@@ -62,7 +77,7 @@ export function parseMitsEmail(email: string): MitsEmailParseResult {
   if (match1) {
     const rawYear = Number.parseInt(match1[1], 10);
     if (!Number.isNaN(rawYear)) {
-      // 2000s batch year
+      // 2000s batch year (admission year)
       batchYear = 2000 + rawYear;
     }
     branchCode = match1[2].toLowerCase();
@@ -81,10 +96,12 @@ export function parseMitsEmail(email: string): MitsEmailParseResult {
   }
 
   const branchName = branchCode && MITS_BRANCH_MAP[branchCode] ? MITS_BRANCH_MAP[branchCode] : null;
+  const expectedGraduationYear = getExpectedGraduationYear(batchYear);
 
   return {
     isValidDomain: true,
     batchYear,
+    expectedGraduationYear,
     branchCode,
     branchName,
   };
@@ -119,4 +136,3 @@ export function normalizeMitsDisplayName(name: string | null | undefined): strin
 
   return trimmed;
 }
-

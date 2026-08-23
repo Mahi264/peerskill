@@ -14,7 +14,6 @@ export interface FormattedPeer {
   id: string;
   fullName: string;
   avatarUrl: string | null;
-  department: string;
   branch: string | null;
   section: string | null;
   graduationYear: number | null;
@@ -48,7 +47,6 @@ export async function searchPeers(input: PeerSearchInput): Promise<PeerSearchRes
     q,
     skill,
     skillId,
-    department,
     available,
     level,
     page = 1,
@@ -59,13 +57,6 @@ export async function searchPeers(input: PeerSearchInput): Promise<PeerSearchRes
   const filterSkill = (skillId || skill)?.trim() || "";
 
   const profileFilter: Prisma.ProfileWhereInput = {};
-
-  // Department filter
-  if (department && department !== "ALL") {
-    profileFilter.department = {
-      equals: department,
-    };
-  }
 
   // Availability filter
   if (available !== undefined) {
@@ -98,11 +89,11 @@ export async function searchPeers(input: PeerSearchInput): Promise<PeerSearchRes
     };
   }
 
-  // General text query matching name, department, bio, or skill name
+  // General text query matching name, branch, bio, or skill name
   if (rawQuery) {
     where.OR = [
       { profile: { fullName: { contains: rawQuery } } },
-      { profile: { department: { contains: rawQuery } } },
+      { profile: { branch: { contains: rawQuery } } },
       { profile: { bio: { contains: rawQuery } } },
       {
         userSkills: {
@@ -205,10 +196,11 @@ export async function searchPeers(input: PeerSearchInput): Promise<PeerSearchRes
         score += 50;
       }
 
-      // 4. Department match bonus
+      // 4. Branch match bonus
       if (
-        (department && u.profile?.department === department) ||
-        (queryLower && u.profile?.department.toLowerCase().includes(queryLower))
+        queryLower &&
+        u.profile?.branch &&
+        u.profile.branch.toLowerCase().includes(queryLower)
       ) {
         score += 30;
       }
@@ -236,7 +228,6 @@ export async function searchPeers(input: PeerSearchInput): Promise<PeerSearchRes
     id: user.id,
     fullName: user.profile!.fullName,
     avatarUrl: user.profile!.avatarUrl,
-    department: user.profile!.department,
     branch: user.profile!.branch,
     section: user.profile!.section,
     graduationYear: user.profile!.graduationYear,

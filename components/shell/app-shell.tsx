@@ -12,7 +12,6 @@ export interface AppShellProps {
   } | null;
   profile?: {
     fullName: string;
-    department: string;
     avatarUrl?: string | null;
   } | null;
   onLogout?: () => void;

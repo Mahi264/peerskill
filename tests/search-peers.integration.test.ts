@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, beforeAll, beforeEach, afterAll, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
@@ -10,27 +10,23 @@ vi.hoisted(() => {
   process.env.COLLEGE_EMAIL_DOMAIN = "mitsgwl.ac.in";
 });
 
-import { GET } from "@/app/api/search/peers/route";
 import { prisma } from "@/lib/prisma";
 import { createSession, SESSION_COOKIE_NAME } from "@/lib/session";
+import { GET } from "@/app/api/search/peers/route";
 
-function createRequest(url: string, rawToken?: string): Request {
-  const headers = new Headers();
-  if (rawToken !== undefined) {
-    headers.set("cookie", `${SESSION_COOKIE_NAME}=${rawToken}`);
+function createRequest(url: string, token?: string): Request {
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Cookie"] = `${SESSION_COOKIE_NAME}=${token}`;
   }
-
-  return new Request(url, {
-    method: "GET",
-    headers,
-  });
+  return new Request(url, { headers });
 }
 
-describe("GET /api/search/peers (Integration - Real SQLite)", () => {
+describe("GET /api/search/peers (Integration Tests)", () => {
   let viewerToken: string;
 
   beforeAll(() => {
-    execSync("npx prisma db push --skip-generate", {
+    execSync("npx prisma db push --skip-generate --accept-data-loss", {
       env: {
         ...process.env,
         DATABASE_URL: TEST_DB_URL,
@@ -39,12 +35,7 @@ describe("GET /api/search/peers (Integration - Real SQLite)", () => {
     });
   });
 
-  afterAll(async () => {
-    await prisma.$disconnect();
-  });
-
   beforeEach(async () => {
-    await prisma.attachment.deleteMany();
     await prisma.answer.deleteMany();
     await prisma.doubtSkill.deleteMany();
     await prisma.doubt.deleteMany();
@@ -64,7 +55,7 @@ describe("GET /api/search/peers (Integration - Real SQLite)", () => {
         profile: {
           create: {
             fullName: "Viewer Student",
-            department: "Civil Engineering",
+            branch: "Civil Engineering",
             helpAvailable: false,
           },
         },
@@ -73,6 +64,10 @@ describe("GET /api/search/peers (Integration - Real SQLite)", () => {
 
     const session = await createSession(viewer.id);
     viewerToken = session.rawToken;
+  });
+
+  afterAll(async () => {
+    await prisma.$disconnect();
   });
 
   it("returns 401 UNAUTHENTICATED without session cookie", async () => {
@@ -89,7 +84,7 @@ describe("GET /api/search/peers (Integration - Real SQLite)", () => {
         profile: {
           create: {
             fullName: "Rohit Sharma",
-            department: "Computer Science",
+            branch: "Computer Science & Engineering (CSE)",
           },
         },
       },
@@ -102,7 +97,7 @@ describe("GET /api/search/peers (Integration - Real SQLite)", () => {
         profile: {
           create: {
             fullName: "Priya Verma",
-            department: "Information Technology",
+            branch: "Information Technology (IT)",
           },
         },
       },
@@ -118,65 +113,65 @@ describe("GET /api/search/peers (Integration - Real SQLite)", () => {
   });
 
   it("enforces skill dominance rule: relevant skill matches rank above unrelated higher proficiency", async () => {
-    const skillReact = await prisma.skill.create({
+    const reactSkill = await prisma.skill.create({
       data: { name: "React", slug: "react" },
     });
-    const skillCpp = await prisma.skill.create({
-      data: { name: "C++", slug: "c-plus-plus" },
+    const rustSkill = await prisma.skill.create({
+      data: { name: "Rust", slug: "rust" },
     });
 
-    // User A: React • Advanced (Available)
-    const userReactAdv = await prisma.user.create({
+    // User A: React Advanced + Available
+    const userA = await prisma.user.create({
       data: {
-        email: "userA@mitsgwl.ac.in",
+        email: "alice@mitsgwl.ac.in",
         status: "ACTIVE",
         profile: {
           create: {
             fullName: "Alice React",
-            department: "Computer Science",
+            branch: "CSE",
             helpAvailable: true,
           },
         },
       },
     });
     await prisma.userSkill.create({
-      data: { userId: userReactAdv.id, skillId: skillReact.id, level: "ADVANCED" },
+      data: { userId: userA.id, skillId: reactSkill.id, level: "ADVANCED" },
     });
 
-    // User B: React • Beginner (Unavailable)
-    const userReactBeg = await prisma.user.create({
+    // User B: React Intermediate + Busy
+    const userB = await prisma.user.create({
       data: {
-        email: "userB@mitsgwl.ac.in",
+        email: "bob@mitsgwl.ac.in",
         status: "ACTIVE",
         profile: {
           create: {
             fullName: "Bob React",
-            department: "Computer Science",
+            branch: "CSE",
             helpAvailable: false,
           },
         },
       },
     });
     await prisma.userSkill.create({
-      data: { userId: userReactBeg.id, skillId: skillReact.id, level: "BEGINNER" },
+      data: { userId: userB.id, skillId: reactSkill.id, level: "INTERMEDIATE" },
     });
 
-    // User C: C++ • Mentor (Available) -> Unrelated skill
-    const userCppMentor = await prisma.user.create({
+    // User C: Rust Mentor (High level, but unrelated to React query)
+    const userC = await prisma.user.create({
       data: {
-        email: "userC@mitsgwl.ac.in",
+        email: "charlie@mitsgwl.ac.in",
         status: "ACTIVE",
         profile: {
           create: {
-            fullName: "Charlie Cpp",
-            department: "Computer Science",
+            fullName: "Charlie Rust",
+            branch: "CSE",
             helpAvailable: true,
           },
         },
       },
     });
     await prisma.userSkill.create({
-      data: { userId: userCppMentor.id, skillId: skillCpp.id, level: "MENTOR" },
+      data: { userId: userC.id, skillId: rustSkill.id, level: "MENTOR" },
     });
 
     // Query specifically for "React"
@@ -192,7 +187,7 @@ describe("GET /api/search/peers (Integration - Real SQLite)", () => {
     expect(peerNames[1]).toBe("Bob React");
   });
 
-  it("filters peers by department and availability", async () => {
+  it("filters peers by availability", async () => {
     // CSE + Available
     await prisma.user.create({
       data: {
@@ -201,7 +196,7 @@ describe("GET /api/search/peers (Integration - Real SQLite)", () => {
         profile: {
           create: {
             fullName: "CSE Available",
-            department: "Computer Science",
+            branch: "Computer Science & Engineering (CSE)",
             helpAvailable: true,
           },
         },
@@ -216,30 +211,15 @@ describe("GET /api/search/peers (Integration - Real SQLite)", () => {
         profile: {
           create: {
             fullName: "CSE Busy",
-            department: "Computer Science",
+            branch: "Computer Science & Engineering (CSE)",
             helpAvailable: false,
           },
         },
       },
     });
 
-    // IT + Available
-    await prisma.user.create({
-      data: {
-        email: "it_avail@mitsgwl.ac.in",
-        status: "ACTIVE",
-        profile: {
-          create: {
-            fullName: "IT Available",
-            department: "Information Technology",
-            helpAvailable: true,
-          },
-        },
-      },
-    });
-
     const req = createRequest(
-      "http://localhost:3000/api/search/peers?department=Computer%20Science&available=true",
+      "http://localhost:3000/api/search/peers?q=CSE&available=true",
       viewerToken,
     );
     const res = await GET(req);
@@ -262,7 +242,7 @@ describe("GET /api/search/peers (Integration - Real SQLite)", () => {
         profile: {
           create: {
             fullName: "Python Beginner",
-            department: "Computer Science",
+            branch: "CSE",
           },
         },
       },
@@ -278,7 +258,7 @@ describe("GET /api/search/peers (Integration - Real SQLite)", () => {
         profile: {
           create: {
             fullName: "Python Mentor",
-            department: "Computer Science",
+            branch: "CSE",
           },
         },
       },

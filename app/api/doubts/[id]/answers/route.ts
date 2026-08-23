@@ -127,7 +127,6 @@ export async function POST(
             profile: {
               select: {
                 fullName: true,
-                department: true,
                 branch: true,
                 section: true,
                 graduationYear: true,
@@ -159,7 +158,6 @@ export async function POST(
             id: answer.author.id,
             email: answer.author.email,
             fullName: answer.author.profile?.fullName || answer.author.email.split("@")[0],
-            department: answer.author.profile?.department || "",
             branch: answer.author.profile?.branch || null,
             section: answer.author.profile?.section || null,
             graduationYear: answer.author.profile?.graduationYear || null,

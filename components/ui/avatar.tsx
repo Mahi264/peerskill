@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 
 export interface AvatarProps extends React.ComponentProps<"div"> {
   name: string;
-  department?: string | null;
   src?: string | null;
   size?: "xs" | "sm" | "md" | "lg" | "xl";
 }
@@ -56,24 +55,6 @@ export function isValidCustomAvatarUrl(url?: string | null): boolean {
   return true;
 }
 
-function getDepartmentRingColor(department?: string | null): string {
-  if (!department) return "border-[color:var(--color-primary)]";
-  const deptLower = department.toLowerCase();
-  if (deptLower.includes("computer") || deptLower.includes("cs") || deptLower.includes("it")) {
-    return "border-[color:var(--color-primary)]"; // Deep Teal
-  }
-  if (deptLower.includes("electric") || deptLower.includes("ee") || deptLower.includes("ece")) {
-    return "border-[color:var(--color-skill-blue)]"; // Blue
-  }
-  if (deptLower.includes("mechanic") || deptLower.includes("me")) {
-    return "border-[color:var(--color-accent)]"; // Amber
-  }
-  if (deptLower.includes("civil") || deptLower.includes("ce")) {
-    return "border-[color:var(--color-skill-green)]"; // Green
-  }
-  return "border-[color:var(--color-primary)]";
-}
-
 const sizeClasses = {
   xs: "size-6 text-[10px] border",
   sm: "size-8 text-xs border-2",
@@ -82,17 +63,15 @@ const sizeClasses = {
   xl: "size-20 text-xl border-4",
 };
 
-export function Avatar({ name, department, src, size = "md", className, ...props }: AvatarProps) {
+export function Avatar({ name, src, size = "md", className, ...props }: AvatarProps) {
   const initials = getAvatarInitials(name);
-  const ringColor = getDepartmentRingColor(department);
   const hasCustomPhoto = isValidCustomAvatarUrl(src);
 
   if (hasCustomPhoto) {
     return (
       <div
         className={cn(
-          "relative inline-flex shrink-0 items-center justify-center rounded-full overflow-hidden border bg-[color:var(--color-surface-muted)]",
-          ringColor,
+          "relative inline-flex shrink-0 items-center justify-center rounded-full overflow-hidden border border-[color:var(--color-border)] bg-[color:var(--color-surface-muted)]",
           sizeClasses[size],
           className,
         )}
@@ -107,12 +86,10 @@ export function Avatar({ name, department, src, size = "md", className, ...props
   return (
     <div
       className={cn(
-        "relative inline-flex shrink-0 items-center justify-center rounded-full bg-[color:var(--color-surface-muted)] font-semibold text-[color:var(--color-primary)] shadow-sm",
-        ringColor,
+        "relative inline-flex shrink-0 items-center justify-center rounded-full bg-[color:var(--color-surface-muted)] font-semibold text-[color:var(--color-primary)] shadow-sm border border-[color:var(--color-primary)]/40",
         sizeClasses[size],
         className,
       )}
-      aria-label={name}
       {...props}
     >
       <span>{initials}</span>

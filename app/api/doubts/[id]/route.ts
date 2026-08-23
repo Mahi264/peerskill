@@ -31,7 +31,6 @@ export async function GET(
           profile: {
             select: {
               fullName: true,
-              department: true,
               branch: true,
               section: true,
               graduationYear: true,
@@ -61,7 +60,6 @@ export async function GET(
               profile: {
                 select: {
                   fullName: true,
-                  department: true,
                   branch: true,
                   section: true,
                   graduationYear: true,
@@ -105,7 +103,6 @@ export async function GET(
             id: doubt.author.id,
             email: doubt.author.email,
             fullName: doubt.author.profile?.fullName || doubt.author.email.split("@")[0],
-            department: doubt.author.profile?.department || "",
             branch: doubt.author.profile?.branch || null,
             section: doubt.author.profile?.section || null,
             graduationYear: doubt.author.profile?.graduationYear || null,
@@ -128,7 +125,6 @@ export async function GET(
               id: ans.author.id,
               email: ans.author.email,
               fullName: ans.author.profile?.fullName || ans.author.email.split("@")[0],
-              department: ans.author.profile?.department || "",
               branch: ans.author.profile?.branch || null,
               section: ans.author.profile?.section || null,
               graduationYear: ans.author.profile?.graduationYear || null,

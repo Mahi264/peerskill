@@ -14,7 +14,6 @@ export interface AppSidebarProps {
   } | null;
   profile?: {
     fullName: string;
-    department: string;
     avatarUrl?: string | null;
   } | null;
   onLogout?: () => void;
@@ -30,7 +29,6 @@ export function AppSidebar({ user, profile, onLogout }: AppSidebarProps) {
   ];
 
   const displayName = profile?.fullName || user?.email?.split("@")[0] || "Student";
-  const department = profile?.department || null;
 
   return (
     <aside className="hidden md:flex h-screen w-60 flex-col justify-between border-r border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-4 sticky top-0 shrink-0">
@@ -78,7 +76,7 @@ export function AppSidebar({ user, profile, onLogout }: AppSidebarProps) {
       {/* User Identity Pill & Logout */}
       <div className="space-y-3 pt-4 border-t border-[color:var(--color-border)]">
         <div className="flex items-center gap-3 px-2 py-1">
-          <Avatar name={displayName} department={department} src={profile?.avatarUrl} size="sm" />
+          <Avatar name={displayName} src={profile?.avatarUrl} size="sm" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-[color:var(--color-text)] truncate">
               {displayName}

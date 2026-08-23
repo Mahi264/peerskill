@@ -41,7 +41,6 @@ export async function GET(request: Request) {
     q: searchParams.get("q") ?? undefined,
     skill: searchParams.get("skill") ?? undefined,
     skillId: searchParams.get("skillId") ?? undefined,
-    department: searchParams.get("department") ?? undefined,
     available: searchParams.get("available") ?? undefined,
     level: searchParams.get("level") ?? undefined,
     page: searchParams.get("page") ?? undefined,

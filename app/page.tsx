@@ -154,7 +154,7 @@ export default function RootSignInPage() {
 
               <p className="text-base sm:text-lg leading-relaxed text-[color:var(--color-text-muted)] max-w-xl">
                 PeerSkill is the private skill-sharing and doubt-solving network for MITS students.
-                Ask peers, exchange course expertise, and reuse verified solutions across departments.
+                Ask peers, exchange course expertise, and reuse verified solutions across campus.
               </p>
             </div>
 

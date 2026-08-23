@@ -29,7 +29,7 @@ function createRequestWithCookie(rawToken?: string): Request {
 
 describe("POST /api/auth/logout (Integration - Real SQLite)", () => {
   beforeAll(() => {
-    execSync("npx prisma db push --skip-generate", {
+    execSync("npx prisma db push --skip-generate --accept-data-loss", {
       env: {
         ...process.env,
         DATABASE_URL: TEST_DB_URL,

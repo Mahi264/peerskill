@@ -39,7 +39,7 @@ describe("Privacy & Availability API (Integration - Real SQLite)", () => {
   let rawToken: string;
 
   beforeAll(() => {
-    execSync("npx prisma db push --skip-generate", {
+    execSync("npx prisma db push --skip-generate --accept-data-loss", {
       env: {
         ...process.env,
         DATABASE_URL: TEST_DB_URL,
@@ -70,7 +70,6 @@ describe("Privacy & Availability API (Integration - Real SQLite)", () => {
       data: {
         userId: user.id,
         fullName: "Aarav Mehta",
-        department: "Computer Science",
         helpAvailable: true,
         helpStatus: "Free after 4pm",
         contactVisibility: "CONNECTIONS",
@@ -188,7 +187,6 @@ describe("Privacy & Availability API (Integration - Real SQLite)", () => {
       data: {
         userId: suspendedUser.id,
         fullName: "Suspended User",
-        department: "CS",
         contactVisibility: "CONNECTIONS",
       },
     });
@@ -227,7 +225,6 @@ describe("Privacy & Availability API (Integration - Real SQLite)", () => {
       data: {
         userId: victimUser.id,
         fullName: "Victim User",
-        department: "CS",
         contactVisibility: "CONNECTIONS",
       },
     });

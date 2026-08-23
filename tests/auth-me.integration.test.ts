@@ -29,7 +29,7 @@ function createRequestWithCookie(rawToken?: string): Request {
 
 describe("GET /api/auth/me (Integration - Real SQLite)", () => {
   beforeAll(() => {
-    execSync("npx prisma db push --skip-generate", {
+    execSync("npx prisma db push --skip-generate --accept-data-loss", {
       env: {
         ...process.env,
         DATABASE_URL: TEST_DB_URL,
@@ -94,7 +94,7 @@ describe("GET /api/auth/me (Integration - Real SQLite)", () => {
         profile: {
           create: {
             fullName: "Integration Student",
-            department: "Computer Science",
+            branch: "Computer Science & Engineering (CSE)",
             bio: "Integration test bio",
           },
         },
@@ -109,7 +109,7 @@ describe("GET /api/auth/me (Integration - Real SQLite)", () => {
 
     expect(json.data.user.profile).toMatchObject({
       fullName: "Integration Student",
-      department: "Computer Science",
+      branch: "Computer Science & Engineering (CSE)",
       bio: "Integration test bio",
     });
   });

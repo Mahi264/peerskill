@@ -51,7 +51,7 @@ describe("Google OAuth 2.0 / OIDC Authentication Integration (SQLite)", () => {
 
     (globalThis as Record<string, unknown>).__TEST_JWKS_OVERRIDE__ = testJwks;
 
-    execSync("npx prisma db push --skip-generate", {
+    execSync("npx prisma db push --skip-generate --accept-data-loss", {
       env: {
         ...process.env,
         DATABASE_URL: TEST_DB_URL,
@@ -417,7 +417,7 @@ describe("Google OAuth 2.0 / OIDC Authentication Integration (SQLite)", () => {
           create: {
             fullName: "Old Name",
             avatarUrl: null,
-            department: "Information Technology",
+            branch: "Information Technology (IT)",
             bio: "Student passionate about networking",
             helpAvailable: true,
           },
@@ -462,7 +462,7 @@ describe("Google OAuth 2.0 / OIDC Authentication Integration (SQLite)", () => {
     expect(updatedUser?.profile?.fullName).toBe("AMIT SHARMA");
     // Google OIDC picture claim does NOT overwrite avatarUrl
     expect(updatedUser?.profile?.avatarUrl).toBeNull();
-    expect(updatedUser?.profile?.department).toBe("Information Technology");
+    expect(updatedUser?.profile?.branch).toBe("Information Technology (IT)");
     expect(updatedUser?.profile?.bio).toBe("Student passionate about networking");
   });
 });

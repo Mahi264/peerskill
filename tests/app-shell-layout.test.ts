@@ -18,12 +18,12 @@ describe("AppShell Responsive Layout & Bottom Navigation Spacing", () => {
       React.createElement(
         AppShell as unknown as React.ComponentType<{
           user?: { email: string; status: string };
-          profile?: { fullName: string; department: string };
+          profile?: { fullName: string };
           children?: React.ReactNode;
         }>,
         {
           user: { email: "student@mitsgwl.ac.in", status: "ACTIVE" },
-          profile: { fullName: "Aarav Sharma", department: "Computer Science" },
+          profile: { fullName: "Aarav Sharma" },
         },
         React.createElement("div", { "data-testid": "page-content" }, "Page Content"),
       ),

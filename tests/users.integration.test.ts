@@ -30,7 +30,7 @@ describe("GET /api/users/[id] (Integration - Real SQLite)", () => {
   let viewerToken: string;
 
   beforeAll(() => {
-    execSync("npx prisma db push --skip-generate", {
+    execSync("npx prisma db push --skip-generate --accept-data-loss", {
       env: {
         ...process.env,
         DATABASE_URL: TEST_DB_URL,
@@ -64,7 +64,6 @@ describe("GET /api/users/[id] (Integration - Real SQLite)", () => {
         profile: {
           create: {
             fullName: "Viewer Student",
-            department: "Computer Science",
           },
         },
       },
@@ -110,9 +109,8 @@ describe("GET /api/users/[id] (Integration - Real SQLite)", () => {
         profile: {
           create: {
             fullName: "Mohit Sharma",
-            department: "Computer Science",
             branch: "CSE",
-            graduationYear: 2027,
+            graduationYear: 2028,
             section: "A",
             bio: "Passionate about Next.js and systems programming.",
             helpAvailable: true,
@@ -180,9 +178,9 @@ describe("GET /api/users/[id] (Integration - Real SQLite)", () => {
 
     // Profile data verification
     expect(u.profile.fullName).toBe("Mohit Sharma");
-    expect(u.profile.department).toBe("Computer Science");
+    expect(u.profile).not.toHaveProperty("department");
     expect(u.profile.branch).toBe("CSE");
-    expect(u.profile.graduationYear).toBe(2027);
+    expect(u.profile.graduationYear).toBe(2028);
     expect(u.profile.bio).toBe("Passionate about Next.js and systems programming.");
     expect(u.profile.helpAvailable).toBe(true);
     expect(u.profile.helpStatus).toBe("Free after 5 PM");

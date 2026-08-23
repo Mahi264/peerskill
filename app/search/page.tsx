@@ -25,20 +25,6 @@ import { Switch } from "@/components/ui/switch";
 import { AlertBanner } from "@/components/ui/toast";
 import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
 
-const DEPARTMENTS = [
-  "Computer Science",
-  "Information Technology",
-  "Electrical Engineering",
-  "Electronics & Communication",
-  "Mechanical Engineering",
-  "Civil Engineering",
-  "Chemical Engineering",
-  "Business Administration",
-  "Mathematics & Computing",
-  "Physics",
-  "Other",
-];
-
 interface User {
   id: string;
   email: string;
@@ -47,7 +33,6 @@ interface User {
 
 interface Profile {
   fullName: string;
-  department: string;
   avatarUrl?: string | null;
 }
 
@@ -71,7 +56,6 @@ interface SearchDoubt {
     id: string;
     email: string;
     fullName: string;
-    department: string;
     branch?: string | null;
     section?: string | null;
     graduationYear?: number | null;
@@ -84,7 +68,6 @@ interface SearchPeer {
   id: string;
   fullName: string;
   avatarUrl: string | null;
-  department: string;
   branch: string | null;
   section?: string | null;
   graduationYear: number | null;
@@ -125,7 +108,6 @@ function SearchPageContent() {
   const filterSkill = searchParams.get("skill") || searchParams.get("skillId") || "";
 
   // Peers filters
-  const filterDept = searchParams.get("department") || "ALL";
   const filterAvailable = searchParams.get("available") === "true";
   const filterLevel = searchParams.get("level") || "ALL";
 
@@ -255,7 +237,6 @@ function SearchPageContent() {
         try {
           const params = new URLSearchParams();
           if (peerQuery.trim()) params.set("q", peerQuery.trim());
-          if (filterDept !== "ALL") params.set("department", filterDept);
           if (filterAvailable) params.set("available", "true");
           if (filterLevel !== "ALL") params.set("level", filterLevel);
           if (filterSkill) params.set("skill", filterSkill);
@@ -297,7 +278,6 @@ function SearchPageContent() {
     filterStatus,
     filterUrgency,
     filterSkill,
-    filterDept,
     filterAvailable,
     filterLevel,
     currentPage,
@@ -585,7 +565,6 @@ function SearchPageContent() {
                       >
                         <Avatar
                           name={doubt.author.fullName}
-                          department={doubt.author.department}
                           src={doubt.author.avatarUrl}
                           size="sm"
                         />
@@ -656,20 +635,6 @@ function SearchPageContent() {
               <span className="text-xs font-semibold text-[color:var(--color-text-muted)] uppercase tracking-wider">
                 Peer Filters:
               </span>
-
-              {/* Department Filter */}
-              <Select
-                value={filterDept}
-                onChange={(e) => updateFilters({ department: e.target.value })}
-                className="h-9 text-xs w-44"
-              >
-                <option value="ALL">All Departments</option>
-                {DEPARTMENTS.map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
-                  </option>
-                ))}
-              </Select>
 
               {/* Minimum Proficiency Level */}
               <Select
@@ -753,7 +718,7 @@ function SearchPageContent() {
                   No campus peers found
                 </h3>
                 <p className="text-sm text-[color:var(--color-text-muted)] max-w-md mx-auto">
-                  Try broadening your search terms, selecting &ldquo;All Departments&rdquo;, or resetting your filters.
+                  Try broadening your search terms or resetting your filters.
                 </p>
               </div>
               <div className="pt-2 flex justify-center">
@@ -763,7 +728,6 @@ function SearchPageContent() {
                     updateFilters({
                       peerQuery: null,
                       peerQ: null,
-                      department: null,
                       level: null,
                       available: null,
                       skill: null,
@@ -790,7 +754,6 @@ function SearchPageContent() {
                           <div className="flex items-center gap-3">
                             <Avatar
                               name={p.fullName}
-                              department={p.department}
                               src={p.avatarUrl}
                               size="md"
                             />

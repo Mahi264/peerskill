@@ -25,7 +25,6 @@ interface UserSkill {
 
 interface Profile {
   fullName: string;
-  department: string;
   branch?: string | null;
   graduationYear?: number | null;
   section?: string | null;
@@ -59,7 +58,6 @@ interface Doubt {
     id: string;
     email: string;
     fullName: string;
-    department: string;
     branch?: string | null;
     section?: string | null;
     graduationYear?: number | null;
@@ -409,7 +407,7 @@ export default function HomePage() {
                         onClick={(e) => e.stopPropagation()}
                         className="flex items-center gap-2 hover:underline group cursor-pointer"
                       >
-                        <Avatar name={d.author.fullName} department={d.author.department} src={d.author.avatarUrl} size="sm" />
+                        <Avatar name={d.author.fullName} src={d.author.avatarUrl} size="sm" />
                         <span className="text-xs font-semibold text-[color:var(--color-text)] group-hover:text-[color:var(--color-primary)]">
                           {d.author.fullName}
                         </span>
@@ -454,7 +452,7 @@ export default function HomePage() {
             {/* Compact Profile & Availability Widget */}
             <Card className="p-5 space-y-5 shadow-sm">
               <div className="flex items-center gap-3 border-b border-[color:var(--color-border)]/60 pb-3.5">
-                <Avatar name={displayName} department={profile?.department} src={profile?.avatarUrl} size="md" />
+                <Avatar name={displayName} src={profile?.avatarUrl} size="md" />
                 <div className="min-w-0 flex-1">
                   <h3 className="text-sm font-bold text-[color:var(--color-text)] truncate">
                     {displayName}

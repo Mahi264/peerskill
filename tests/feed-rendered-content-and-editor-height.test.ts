@@ -55,14 +55,13 @@ describe("Discovery Feed, Formatted Previews & Editor Height", () => {
       id: "u-1",
       email: "student1@mitsgwl.ac.in",
       fullName: "Mohit Sharma",
-      department: "CSE",
       branch: "Computer Science & Engineering (CSE)",
       section: "A",
       graduationYear: 2028,
       avatarUrl: null,
     };
 
-    it("formats peer-facing academic subtitle for doubt author without department prefix", () => {
+    it("formats peer-facing academic subtitle for doubt author without department concept", () => {
       const subtitle = formatPublicPeerAcademicSubtitle(mockAuthor);
       expect(subtitle).toBe("Computer Science & Engineering (CSE) • Section A • Class of 2028");
     });

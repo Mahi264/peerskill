@@ -161,7 +161,7 @@ describe("Doubts API (Unit Tests)", () => {
         author: {
           id: "user-1",
           email: "student@college.edu",
-          profile: { fullName: "Aarav Sharma", department: "Computer Science", avatarUrl: null },
+          profile: { fullName: "Aarav Sharma", branch: "Computer Science & Engineering (CSE)", avatarUrl: null },
         },
         skills: [{ skill: { id: "skill-1", name: "C++", slug: "cpp" } }],
       });

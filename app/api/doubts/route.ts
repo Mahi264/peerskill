@@ -85,7 +85,6 @@ export async function GET(request: Request) {
               select: {
                 fullName: true,
                 avatarUrl: true,
-                department: true,
                 branch: true,
                 section: true,
                 graduationYear: true,
@@ -124,7 +123,6 @@ export async function GET(request: Request) {
       id: d.author.id,
       email: d.author.email,
       fullName: d.author.profile?.fullName || d.author.email.split("@")[0],
-      department: d.author.profile?.department || "",
       branch: d.author.profile?.branch || null,
       section: d.author.profile?.section || null,
       graduationYear: d.author.profile?.graduationYear || null,
@@ -311,7 +309,6 @@ export async function POST(request: Request) {
           profile: {
             select: {
               fullName: true,
-              department: true,
               branch: true,
               section: true,
               graduationYear: true,
@@ -352,7 +349,6 @@ export async function POST(request: Request) {
             id: doubt.author.id,
             email: doubt.author.email,
             fullName: doubt.author.profile?.fullName || doubt.author.email.split("@")[0],
-            department: doubt.author.profile?.department || "",
             branch: doubt.author.profile?.branch || null,
             section: doubt.author.profile?.section || null,
             graduationYear: doubt.author.profile?.graduationYear || null,

@@ -56,21 +56,18 @@ describe("Inline Answer Composer & Public Peer Academic Identity Refinement", ()
   });
 
   describe("Peer-Facing Academic Identity Presentation (formatPublicPeerAcademicSubtitle)", () => {
-    it("omits Department when Branch is present and formats Branch • Section • Class of YYYY", () => {
+    it("formats Branch • Section • Class of YYYY", () => {
       const result = formatPublicPeerAcademicSubtitle({
-        department: "Computer Science",
         branch: "Computer Science & Engineering (CSE)",
         section: "A",
         graduationYear: 2028,
       });
 
-      expect(result).not.toContain("Computer Science •");
       expect(result).toBe("Computer Science & Engineering (CSE) • Section A • Class of 2028");
     });
 
     it("formats Branch • Class of YYYY when section is not set", () => {
       const result = formatPublicPeerAcademicSubtitle({
-        department: "Computer Science",
         branch: "Computer Science & Engineering (CSE)",
         section: null,
         graduationYear: 2028,
@@ -81,7 +78,6 @@ describe("Inline Answer Composer & Public Peer Academic Identity Refinement", ()
 
     it("formats Branch • Section when graduation year is not available", () => {
       const result = formatPublicPeerAcademicSubtitle({
-        department: "Information Technology",
         branch: "Information Technology (IT)",
         section: "B",
         graduationYear: null,
@@ -92,7 +88,6 @@ describe("Inline Answer Composer & Public Peer Academic Identity Refinement", ()
 
     it("formats Branch only when neither section nor graduation year is set", () => {
       const result = formatPublicPeerAcademicSubtitle({
-        department: "Electrical Engineering",
         branch: "Electrical Engineering (EE)",
         section: null,
         graduationYear: null,
@@ -101,15 +96,14 @@ describe("Inline Answer Composer & Public Peer Academic Identity Refinement", ()
       expect(result).toBe("Electrical Engineering (EE)");
     });
 
-    it("falls back gracefully to department only when branch is missing", () => {
+    it("falls back gracefully to Campus Student when branch is missing", () => {
       const result = formatPublicPeerAcademicSubtitle({
-        department: "Mechanical Engineering",
         branch: null,
         section: "C",
-        graduationYear: 2026,
+        graduationYear: 2028,
       });
 
-      expect(result).toBe("Mechanical Engineering • Section C • Class of 2026");
+      expect(result).toBe("Campus Student • Section C • Class of 2028");
     });
   });
 });

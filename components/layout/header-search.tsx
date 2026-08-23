@@ -11,12 +11,16 @@ export interface HeaderSearchProps {
   initialValue?: string;
   className?: string;
   placeholder?: string;
+  onSearch?: (query: string) => void;
+  onClear?: () => void;
 }
 
 export function HeaderSearch({
   initialValue = "",
   className,
   placeholder = "Search campus doubts & solutions...",
+  onSearch,
+  onClear,
 }: HeaderSearchProps) {
   const router = useRouter();
   const [query, setQuery] = React.useState(initialValue);
@@ -30,7 +34,9 @@ export function HeaderSearch({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = query.trim();
-    if (trimmed) {
+    if (onSearch) {
+      onSearch(trimmed);
+    } else if (trimmed) {
       router.push(`/search?q=${encodeURIComponent(trimmed)}`);
     } else {
       router.push("/search");
@@ -39,6 +45,13 @@ export function HeaderSearch({
 
   function handleClear() {
     setQuery("");
+    if (onClear) {
+      onClear();
+    } else if (onSearch) {
+      onSearch("");
+    } else {
+      router.push("/search");
+    }
   }
 
   return (
@@ -53,12 +66,13 @@ export function HeaderSearch({
       </div>
 
       <Input
-        type="search"
+        type="text"
+        role="searchbox"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={placeholder}
         aria-label="Search campus knowledge"
-        className="w-full h-11 pl-9 pr-9 text-sm bg-white border-[color:var(--color-border)] rounded-[var(--radius-md)] text-[color:var(--color-text)] placeholder:text-[color:var(--color-text-muted)] shadow-sm focus-visible:ring-2 focus-visible:ring-[color:var(--color-primary)]"
+        className="w-full h-11 pl-9 pr-9 text-sm bg-white border-[color:var(--color-border)] rounded-[var(--radius-md)] text-[color:var(--color-text)] placeholder:text-[color:var(--color-text-muted)] shadow-sm focus-visible:ring-2 focus-visible:ring-[color:var(--color-primary)] [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
       />
 
       {query && (

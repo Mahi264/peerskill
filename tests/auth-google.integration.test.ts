@@ -58,7 +58,7 @@ describe("Google OAuth 2.0 / OIDC Authentication Integration (SQLite)", () => {
       },
       stdio: "ignore",
     });
-  });
+  }, 60000);
 
   beforeEach(async () => {
     vi.restoreAllMocks();

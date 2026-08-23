@@ -80,7 +80,7 @@ export function HeaderSearch({
           type="button"
           onClick={handleClear}
           aria-label="Clear search query"
-          className="absolute right-2.5 size-7 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-primary)]"
+          className="absolute right-2.5 size-7 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-primary)] cursor-pointer"
         >
           <X className="size-4" />
         </button>

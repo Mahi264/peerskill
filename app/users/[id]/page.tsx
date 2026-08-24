@@ -30,6 +30,8 @@ interface ViewerProfile {
   avatarUrl?: string | null;
 }
 
+import { ViewerConnectionInfo } from "@/lib/validations/connection";
+
 interface PeerProfileData {
   id: string;
   status: string;
@@ -54,6 +56,7 @@ interface PeerProfileData {
     doubtsCount: number;
     answersCount: number;
   };
+  viewerConnection?: ViewerConnectionInfo;
 }
 
 const LEVEL_VARIANT_MAP: Record<
@@ -76,6 +79,8 @@ export default function CampusPeerProfilePage() {
   const [peer, setPeer] = React.useState<PeerProfileData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const [actionLoading, setActionLoading] = React.useState(false);
+  const [actionMessage, setActionMessage] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let ignore = false;
@@ -190,6 +195,148 @@ export default function CampusPeerProfilePage() {
 
   const isSelf = viewer?.id === peer.id;
   const { profile, skills, stats } = peer;
+  const viewerConnection = peer.viewerConnection || { state: "NOT_CONNECTED" };
+
+  async function handleSendRequest() {
+    setActionLoading(true);
+    setActionMessage(null);
+    try {
+      const res = await fetch("/api/connections", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ receiverId: peer!.id }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setActionMessage(json.error?.message || "Failed to send request.");
+        return;
+      }
+
+      if (json.data?.autoAccepted) {
+        setPeer((prev) =>
+          prev
+            ? {
+                ...prev,
+                viewerConnection: {
+                  state: "CONNECTED",
+                  connectionId: json.data.connection.id,
+                },
+              }
+            : null
+        );
+      } else {
+        setPeer((prev) =>
+          prev
+            ? {
+                ...prev,
+                viewerConnection: {
+                  state: "PENDING_OUTGOING",
+                  connectionId: json.data.connection.id,
+                },
+              }
+            : null
+        );
+      }
+    } catch {
+      setActionMessage("Network error while sending connection request.");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleAccept() {
+    if (!viewerConnection.connectionId) return;
+    setActionLoading(true);
+    setActionMessage(null);
+    try {
+      const res = await fetch(`/api/connections/${viewerConnection.connectionId}/accept`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const json = await res.json();
+        setActionMessage(json.error?.message || "Failed to accept request.");
+        return;
+      }
+
+      setPeer((prev) =>
+        prev
+          ? {
+              ...prev,
+              viewerConnection: {
+                state: "CONNECTED",
+                connectionId: viewerConnection.connectionId,
+              },
+            }
+          : null
+      );
+    } catch {
+      setActionMessage("Network error while accepting request.");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleDecline() {
+    if (!viewerConnection.connectionId) return;
+    setActionLoading(true);
+    setActionMessage(null);
+    try {
+      const res = await fetch(`/api/connections/${viewerConnection.connectionId}/decline`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const json = await res.json();
+        setActionMessage(json.error?.message || "Failed to decline request.");
+        return;
+      }
+
+      setPeer((prev) =>
+        prev
+          ? {
+              ...prev,
+              viewerConnection: {
+                state: "NOT_CONNECTED",
+              },
+            }
+          : null
+      );
+    } catch {
+      setActionMessage("Network error while declining request.");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleCancelOrRemove() {
+    if (!viewerConnection.connectionId) return;
+    setActionLoading(true);
+    setActionMessage(null);
+    try {
+      const res = await fetch(`/api/connections/${viewerConnection.connectionId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const json = await res.json();
+        setActionMessage(json.error?.message || "Failed to update connection.");
+        return;
+      }
+
+      setPeer((prev) =>
+        prev
+          ? {
+              ...prev,
+              viewerConnection: {
+                state: "NOT_CONNECTED",
+              },
+            }
+          : null
+      );
+    } catch {
+      setActionMessage("Network error while updating connection.");
+    } finally {
+      setActionLoading(false);
+    }
+  }
 
   return (
     <AppShell user={viewer} profile={viewerProfile}>
@@ -236,37 +383,122 @@ export default function CampusPeerProfilePage() {
 
         {/* Identity & Academic Header Card */}
         <Card className="p-6 sm:p-8 bg-gradient-to-r from-white via-white to-[color:var(--color-surface-muted)]/40 shadow-sm space-y-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-            <Avatar
-              name={profile.fullName}
-              src={profile.avatarUrl}
-              size="xl"
-            />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 flex-1">
+              <Avatar
+                name={profile.fullName}
+                src={profile.avatarUrl}
+                size="xl"
+              />
 
-            <div className="space-y-2 flex-1">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <h1 className="text-2xl font-bold tracking-tight text-[color:var(--color-text)]">
-                  {profile.fullName}
-                </h1>
-                <Badge
-                  variant={profile.helpAvailable ? "success" : "outline"}
-                  className="text-xs px-2.5 py-0.5"
-                >
-                  {profile.helpAvailable ? "Available to help" : "Unavailable"}
-                </Badge>
-              </div>
+              <div className="space-y-2 flex-1">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h1 className="text-2xl font-bold tracking-tight text-[color:var(--color-text)]">
+                    {profile.fullName}
+                  </h1>
+                  <Badge
+                    variant={profile.helpAvailable ? "success" : "outline"}
+                    className="text-xs px-2.5 py-0.5"
+                  >
+                    {profile.helpAvailable ? "Available to help" : "Unavailable"}
+                  </Badge>
+                </div>
 
-              <p className="text-sm font-medium text-[color:var(--color-text-muted)]">
-                {formatPublicPeerAcademicSubtitle(profile)}
-              </p>
-
-              {profile.bio && (
-                <p className="text-sm text-[color:var(--color-text)] leading-relaxed italic pt-1 max-w-2xl">
-                  &quot;{profile.bio}&quot;
+                <p className="text-sm font-medium text-[color:var(--color-text-muted)]">
+                  {formatPublicPeerAcademicSubtitle(profile)}
                 </p>
-              )}
+
+                {profile.bio && (
+                  <p className="text-sm text-[color:var(--color-text)] leading-relaxed italic pt-1 max-w-2xl">
+                    &quot;{profile.bio}&quot;
+                  </p>
+                )}
+              </div>
             </div>
+
+            {/* Connection Actions for Non-Self */}
+            {!isSelf && (
+              <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-2 sm:pt-0">
+                {viewerConnection.state === "NOT_CONNECTED" && (
+                  <Button
+                    onClick={handleSendRequest}
+                    disabled={actionLoading}
+                    className="gap-2"
+                  >
+                    Connect
+                  </Button>
+                )}
+
+                {viewerConnection.state === "PENDING_OUTGOING" && (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs py-1.5 px-3 bg-amber-50 text-amber-800 border-amber-300">
+                      Request Pending
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancelOrRemove}
+                      disabled={actionLoading}
+                      className="text-xs text-[color:var(--color-text-muted)] hover:text-red-600"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+
+                {viewerConnection.state === "PENDING_INCOMING" && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleAccept}
+                      disabled={actionLoading}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-9"
+                    >
+                      Accept Request
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleDecline}
+                      disabled={actionLoading}
+                      className="text-xs h-9 text-[color:var(--color-text-muted)]"
+                    >
+                      Decline
+                    </Button>
+                  </div>
+                )}
+
+                {viewerConnection.state === "CONNECTED" && (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="success" className="text-xs py-1.5 px-3">
+                      Connected ✓
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancelOrRemove}
+                      disabled={actionLoading}
+                      className="text-xs text-[color:var(--color-text-muted)] hover:text-red-600"
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                )}
+
+                {viewerConnection.state === "DECLINED_RECENTLY" && (
+                  <Badge variant="outline" className="text-xs py-1.5 px-3 text-[color:var(--color-text-muted)] bg-gray-50">
+                    Request Declined
+                  </Badge>
+                )}
+              </div>
+            )}
           </div>
+
+          {actionMessage && (
+            <p className="text-xs font-medium text-amber-600 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+              {actionMessage}
+            </p>
+          )}
 
           {/* Help Status Banner */}
           {profile.helpStatus && (

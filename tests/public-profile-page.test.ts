@@ -105,5 +105,8 @@ describe("Campus Peer Profile Page (app/users/[id]/page.tsx)", () => {
     expect(screen.getByText("4")).toBeDefined();
     expect(screen.getByText("Answers Contributed")).toBeDefined();
     expect(screen.getByText("6")).toBeDefined();
+
+    // Connection button
+    expect(screen.getByRole("button", { name: /Connect/i })).toBeDefined();
   });
 });

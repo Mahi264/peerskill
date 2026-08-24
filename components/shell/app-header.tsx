@@ -1,6 +1,6 @@
 import * as React from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { Search, Users } from "lucide-react";
 
 import { Avatar } from "@/components/ui/avatar";
 
@@ -29,13 +29,21 @@ export function AppHeader({ user, profile }: AppHeaderProps) {
         </span>
       </Link>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <Link
           href="/search"
           className="flex size-9 items-center justify-center rounded-lg text-[color:var(--color-text-muted)] hover:bg-[color:var(--color-surface-muted)] hover:text-[color:var(--color-text)] transition-colors"
           aria-label="Open search"
         >
           <Search className="size-5" />
+        </Link>
+
+        <Link
+          href="/connections"
+          className="flex size-9 items-center justify-center rounded-lg text-[color:var(--color-text-muted)] hover:bg-[color:var(--color-surface-muted)] hover:text-[color:var(--color-text)] transition-colors"
+          aria-label="Connections"
+        >
+          <Users className="size-5" />
         </Link>
 
         <Link href="/profile">

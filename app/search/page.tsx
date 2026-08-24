@@ -64,6 +64,8 @@ interface SearchDoubt {
   skills: Array<{ id: string; name: string; slug: string }>;
 }
 
+import { ViewerConnectionInfo } from "@/lib/validations/connection";
+
 interface SearchPeer {
   id: string;
   fullName: string;
@@ -84,6 +86,7 @@ interface SearchPeer {
     doubtsCount: number;
     answersCount: number;
   };
+  viewerConnection?: ViewerConnectionInfo;
 }
 
 interface Pagination {
@@ -805,9 +808,26 @@ function SearchPageContent() {
 
                       {/* Footer Stats & CTA */}
                       <div className="flex items-center justify-between pt-3 mt-3 border-t border-[color:var(--color-border)]/60 text-xs text-[color:var(--color-text-muted)]">
-                        <span>
-                          {p.stats.answersCount} {p.stats.answersCount === 1 ? "answer" : "answers"} contributed
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span>
+                            {p.stats.answersCount} {p.stats.answersCount === 1 ? "answer" : "answers"}
+                          </span>
+                          {p.viewerConnection?.state === "CONNECTED" && (
+                            <Badge variant="success" className="text-[10px] py-0 px-1.5 font-medium">
+                              Connected
+                            </Badge>
+                          )}
+                          {p.viewerConnection?.state === "PENDING_OUTGOING" && (
+                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 bg-amber-50 text-amber-800 border-amber-300">
+                              Requested
+                            </Badge>
+                          )}
+                          {p.viewerConnection?.state === "PENDING_INCOMING" && (
+                            <Badge variant="outline" className="text-[10px] py-0 px-1.5 bg-emerald-50 text-emerald-800 border-emerald-300">
+                              Respond
+                            </Badge>
+                          )}
+                        </div>
 
                         <span className="font-semibold text-[color:var(--color-primary)] flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                           View Profile

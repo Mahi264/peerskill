@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getAuthenticatedUser } from "@/lib/auth";
+import { getViewerConnectionInfo } from "@/lib/connections";
 import { prisma } from "@/lib/prisma";
 
 function unauthenticatedResponse() {
@@ -82,6 +83,11 @@ export async function GET(
     );
   }
 
+  const viewerConnection = await getViewerConnectionInfo(
+    viewer.id,
+    targetUser.id
+  );
+
   return NextResponse.json(
     {
       data: {
@@ -109,6 +115,7 @@ export async function GET(
             doubtsCount: targetUser._count.doubts,
             answersCount: targetUser._count.answers,
           },
+          viewerConnection,
         },
       },
     },

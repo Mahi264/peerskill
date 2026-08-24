@@ -63,7 +63,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const result = await searchPeers(validationResult.data);
+    const result = await searchPeers(validationResult.data, user.id);
 
     return NextResponse.json(
       {
@@ -71,7 +71,8 @@ export async function GET(request: Request) {
       },
       { status: 200 },
     );
-  } catch {
+  } catch (error) {
+    console.error("Search peers error:", error);
     return NextResponse.json(
       {
         error: {

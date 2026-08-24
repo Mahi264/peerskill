@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { CONNECTION_RE_REQUEST_COOLDOWN_MS, ViewerConnectionInfo } from "@/lib/validations/connection";
 import { PeerSearchInput } from "@/lib/validations/search";
 
 const LEVEL_WEIGHTS: Record<string, number> = {
@@ -30,6 +31,7 @@ export interface FormattedPeer {
     doubtsCount: number;
     answersCount: number;
   };
+  viewerConnection?: ViewerConnectionInfo;
 }
 
 export interface PeerSearchResult {
@@ -42,7 +44,10 @@ export interface PeerSearchResult {
   };
 }
 
-export async function searchPeers(input: PeerSearchInput): Promise<PeerSearchResult> {
+export async function searchPeers(
+  input: PeerSearchInput,
+  viewerId?: string
+): Promise<PeerSearchResult> {
   const {
     q,
     skill,
@@ -223,28 +228,87 @@ export async function searchPeers(input: PeerSearchInput): Promise<PeerSearchRes
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const offset = (page - 1) * limit;
   const paginated = scoredUsers.slice(offset, offset + limit);
+  const paginatedUsers = paginated.map(({ user }) => user);
+  const peerIds = paginatedUsers.map((u) => u.id);
 
-  const peers: FormattedPeer[] = paginated.map(({ user }) => ({
-    id: user.id,
-    fullName: user.profile!.fullName,
-    avatarUrl: user.profile!.avatarUrl,
-    branch: user.profile!.branch,
-    section: user.profile!.section,
-    graduationYear: user.profile!.graduationYear,
-    bio: user.profile!.bio,
-    helpAvailable: user.profile!.helpAvailable,
-    helpStatus: user.profile!.helpStatus,
-    skills: user.userSkills.map((us) => ({
-      id: us.skill.id,
-      name: us.skill.name,
-      slug: us.skill.slug,
-      level: us.level as "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "MENTOR",
-    })),
-    stats: {
-      doubtsCount: user._count.doubts,
-      answersCount: user._count.answers,
-    },
-  }));
+  const connectionsMap: Map<string, { id: string; status: string; requesterId: string; updatedAt: Date }> = new Map();
+
+  if (viewerId && peerIds.length > 0) {
+    const activeConnections = await prisma.connection.findMany({
+      where: {
+        OR: [
+          { requesterId: viewerId, receiverId: { in: peerIds } },
+          { requesterId: { in: peerIds }, receiverId: viewerId },
+        ],
+      },
+      select: {
+        id: true,
+        requesterId: true,
+        receiverId: true,
+        status: true,
+        updatedAt: true,
+      },
+    });
+
+    for (const conn of activeConnections) {
+      const otherId = conn.requesterId === viewerId ? conn.receiverId : conn.requesterId;
+      connectionsMap.set(otherId, conn);
+    }
+  }
+
+  const peers: FormattedPeer[] = paginatedUsers.map((user) => {
+    let viewerConnection: ViewerConnectionInfo = { state: "NOT_CONNECTED" };
+
+    if (viewerId) {
+      if (viewerId === user.id) {
+        viewerConnection = { state: "SELF" };
+      } else {
+        const conn = connectionsMap.get(user.id);
+        if (conn) {
+          if (conn.status === "ACCEPTED") {
+            viewerConnection = { state: "CONNECTED", connectionId: conn.id };
+          } else if (conn.status === "PENDING") {
+            if (conn.requesterId === viewerId) {
+              viewerConnection = { state: "PENDING_OUTGOING", connectionId: conn.id };
+            } else {
+              viewerConnection = { state: "PENDING_INCOMING", connectionId: conn.id };
+            }
+          } else if (conn.status === "DECLINED") {
+            const elapsed = Date.now() - new Date(conn.updatedAt).getTime();
+            if (elapsed < CONNECTION_RE_REQUEST_COOLDOWN_MS) {
+              viewerConnection = {
+                state: "DECLINED_RECENTLY",
+                connectionId: conn.id,
+              };
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      id: user.id,
+      fullName: user.profile!.fullName,
+      avatarUrl: user.profile!.avatarUrl,
+      branch: user.profile!.branch,
+      section: user.profile!.section,
+      graduationYear: user.profile!.graduationYear,
+      bio: user.profile!.bio,
+      helpAvailable: user.profile!.helpAvailable,
+      helpStatus: user.profile!.helpStatus,
+      skills: user.userSkills.map((us) => ({
+        id: us.skill.id,
+        name: us.skill.name,
+        slug: us.skill.slug,
+        level: us.level as "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "MENTOR",
+      })),
+      stats: {
+        doubtsCount: user._count.doubts,
+        answersCount: user._count.answers,
+      },
+      viewerConnection,
+    };
+  });
 
   return {
     peers,

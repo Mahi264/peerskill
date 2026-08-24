@@ -338,6 +338,31 @@ export default function CampusPeerProfilePage() {
     }
   }
 
+  async function handleOpenConversation() {
+    if (!peer) return;
+    setActionLoading(true);
+    setActionMessage(null);
+    try {
+      const res = await fetch("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ peerId: peer.id }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setActionMessage(json.error?.message || "Failed to open conversation.");
+        return;
+      }
+      if (json?.data?.conversation?.id) {
+        router.push(`/messages/${json.data.conversation.id}`);
+      }
+    } catch {
+      setActionMessage("Network error while opening conversation.");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   return (
     <AppShell user={viewer} profile={viewerProfile}>
       <div className="max-w-4xl mx-auto space-y-6">
@@ -470,6 +495,15 @@ export default function CampusPeerProfilePage() {
 
                 {viewerConnection.state === "CONNECTED" && (
                   <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleOpenConversation}
+                      disabled={actionLoading}
+                      className="gap-1.5 text-xs h-9"
+                    >
+                      <MessageSquare className="size-3.5" />
+                      <span>Message</span>
+                    </Button>
                     <Badge variant="success" className="text-xs py-1.5 px-3">
                       Connected ✓
                     </Badge>

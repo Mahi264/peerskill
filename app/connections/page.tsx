@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Inbox,
+  MessageSquare,
   Send,
   UserCheck,
   UserPlus,
@@ -196,6 +197,30 @@ export default function ConnectionsPage() {
       await fetchConnections();
     } catch {
       setActionError("Network error while removing connection.");
+    } finally {
+      setActionLoadingId(null);
+    }
+  }
+
+  async function handleOpenConversation(peerId: string) {
+    setActionLoadingId(peerId);
+    setActionError(null);
+    try {
+      const res = await fetch("/api/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ peerId }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setActionError(json.error?.message || "Failed to open conversation.");
+        return;
+      }
+      if (json?.data?.conversation?.id) {
+        router.push(`/messages/${json.data.conversation.id}`);
+      }
+    } catch {
+      setActionError("Network error while opening conversation.");
     } finally {
       setActionLoadingId(null);
     }
@@ -396,9 +421,18 @@ export default function ConnectionsPage() {
                       </span>
 
                       <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          disabled={actionLoadingId === peer.id}
+                          onClick={() => handleOpenConversation(peer.id)}
+                          className="text-xs h-7 gap-1"
+                        >
+                          <MessageSquare className="size-3" />
+                          <span>Message</span>
+                        </Button>
                         <Link href={`/users/${peer.id}`}>
                           <Button variant="outline" size="sm" className="text-xs h-7">
-                            View Profile
+                            Profile
                           </Button>
                         </Link>
                         <Button

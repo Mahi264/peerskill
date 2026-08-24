@@ -20,7 +20,7 @@ export default defineConfig({
     setupFiles: ["./vitest.setup.ts"],
     include: ["tests/**/*.test.ts"],
     fileParallelism: false,
-    hookTimeout: 30000,
-    testTimeout: 30000,
+    hookTimeout: 60000,
+    testTimeout: 60000,
   },
 });

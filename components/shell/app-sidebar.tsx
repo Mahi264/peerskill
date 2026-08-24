@@ -1,7 +1,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, LogOut, Search, User, Users } from "lucide-react";
+import { Home, LogOut, MessageSquare, Search, User, Users } from "lucide-react";
 
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ export function AppSidebar({ user, profile, onLogout }: AppSidebarProps) {
     { name: "Home", href: "/home", icon: Home },
     { name: "Search", href: "/search", icon: Search },
     { name: "Connections", href: "/connections", icon: Users },
+    { name: "Messages", href: "/messages", icon: MessageSquare },
     { name: "Profile", href: "/profile", icon: User },
   ];
 

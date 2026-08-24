@@ -1,6 +1,6 @@
 import * as React from "react";
 import Link from "next/link";
-import { Search, Users } from "lucide-react";
+import { MessageSquare, Search, Users } from "lucide-react";
 
 import { Avatar } from "@/components/ui/avatar";
 
@@ -44,6 +44,14 @@ export function AppHeader({ user, profile }: AppHeaderProps) {
           aria-label="Connections"
         >
           <Users className="size-5" />
+        </Link>
+
+        <Link
+          href="/messages"
+          className="flex size-9 items-center justify-center rounded-lg text-[color:var(--color-text-muted)] hover:bg-[color:var(--color-surface-muted)] hover:text-[color:var(--color-text)] transition-colors"
+          aria-label="Messages"
+        >
+          <MessageSquare className="size-5" />
         </Link>
 
         <Link href="/profile">

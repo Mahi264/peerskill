@@ -1,10 +1,16 @@
 import "server-only";
 
-import { UserRole, type User } from "@prisma/client";
+import { type AdminAccount, type AdminSession, type Session, type User } from "@prisma/client";
 
+import { findValidAdminSession } from "@/lib/admin";
 import { findValidSession, SESSION_COOKIE_NAME } from "@/lib/session";
 
-function getSessionTokenFromRequest(request: Request): string | null {
+export type AuthenticatedPrincipal =
+  | { type: "STUDENT"; user: User; session: Session }
+  | { type: "ADMIN"; admin: AdminAccount; session: AdminSession }
+  | null;
+
+export function getSessionTokenFromRequest(request: Request): string | null {
   if (
     "cookies" in request &&
     typeof (request as { cookies?: { get: (name: string) => { value: string } | undefined } })
@@ -34,28 +40,60 @@ function getSessionTokenFromRequest(request: Request): string | null {
 }
 
 /**
-  * Resolves the authenticated user from the HTTP-only session cookie.
-  * Returns null if the session cookie is missing, invalid, expired, or revoked.
-  */
-export async function getAuthenticatedUser(request: Request): Promise<User | null> {
+ * Resolves the authenticated principal (STUDENT or ADMIN) from the HTTP-only session cookie.
+ */
+export async function getAuthenticatedPrincipal(
+  request: Request,
+): Promise<AuthenticatedPrincipal> {
   const rawToken = getSessionTokenFromRequest(request);
 
   if (!rawToken) {
     return null;
   }
 
-  const session = await findValidSession(rawToken);
-
-  if (!session || !session.user) {
-    return null;
+  // 1. Check Student Session
+  const studentSession = await findValidSession(rawToken);
+  if (studentSession && studentSession.user) {
+    return {
+      type: "STUDENT",
+      user: studentSession.user,
+      session: studentSession,
+    };
   }
 
-  return session.user;
+  // 2. Check Admin Session
+  const adminSession = await findValidAdminSession(rawToken);
+  if (adminSession && adminSession.adminAccount) {
+    return {
+      type: "ADMIN",
+      admin: adminSession.adminAccount,
+      session: adminSession,
+    };
+  }
+
+  return null;
 }
 
 /**
-  * Checks if the user has a specific role.
-  */
-export function hasRole(user: { role: UserRole }, role: UserRole): boolean {
-  return user.role === role;
+ * Resolves the authenticated student user from the session cookie.
+ * Returns null if unauthenticated or if the principal is an Admin.
+ */
+export async function getAuthenticatedUser(request: Request): Promise<User | null> {
+  const principal = await getAuthenticatedPrincipal(request);
+  if (principal && principal.type === "STUDENT") {
+    return principal.user;
+  }
+  return null;
+}
+
+/**
+ * Resolves the authenticated platform administrator from the session cookie.
+ * Returns null if unauthenticated or if the principal is a Student.
+ */
+export async function getAuthenticatedAdmin(request: Request): Promise<AdminAccount | null> {
+  const principal = await getAuthenticatedPrincipal(request);
+  if (principal && principal.type === "ADMIN") {
+    return principal.admin;
+  }
+  return null;
 }

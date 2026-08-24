@@ -40,7 +40,6 @@ function fakeUser(overrides: Record<string, unknown> = {}) {
     email: "student@college.edu",
     passwordHash: "$argon2id$secret",
     collegeEmailVerified: true,
-    role: "STUDENT" as const,
     status: "ACTIVE" as const,
     createdAt: new Date("2026-01-01T00:00:00Z"),
     updatedAt: new Date("2026-01-01T00:00:00Z"),

@@ -115,7 +115,6 @@ export async function PATCH(request: Request) {
           id: user.id,
           email: user.email,
           collegeEmailVerified: user.collegeEmailVerified,
-          role: user.role,
           status: user.status,
           createdAt: user.createdAt.toISOString(),
         },

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getAuthenticatedUser } from "@/lib/auth";
+import { getAuthenticatedPrincipal } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function unauthenticatedResponse() {
@@ -16,11 +16,31 @@ function unauthenticatedResponse() {
 }
 
 export async function GET(request: Request) {
-  const user = await getAuthenticatedUser(request);
+  const principal = await getAuthenticatedPrincipal(request);
 
-  if (!user) {
+  if (!principal) {
     return unauthenticatedResponse();
   }
+
+  if (principal.type === "ADMIN") {
+    return NextResponse.json(
+      {
+        data: {
+          principalType: "ADMIN",
+          admin: {
+            id: principal.admin.id,
+            email: principal.admin.email,
+            displayName: principal.admin.displayName,
+            createdAt: principal.admin.createdAt.toISOString(),
+            updatedAt: principal.admin.updatedAt.toISOString(),
+          },
+        },
+      },
+      { status: 200 },
+    );
+  }
+
+  const user = principal.user;
 
   const profile = await prisma.profile.findUnique({
     where: { userId: user.id },
@@ -34,11 +54,11 @@ export async function GET(request: Request) {
   return NextResponse.json(
     {
       data: {
+        principalType: "STUDENT",
         user: {
           id: user.id,
           email: user.email,
           collegeEmailVerified: user.collegeEmailVerified,
-          role: user.role,
           status: user.status,
           createdAt: user.createdAt.toISOString(),
           profile: profile

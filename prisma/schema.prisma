@@ -22,7 +22,6 @@ model User {
   googleId             String?      @unique
   passwordHash         String?
   collegeEmailVerified Boolean      @default(false)
-  role                 UserRole     @default(STUDENT)
   status               UserStatus   @default(PENDING)
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
@@ -162,11 +161,6 @@ model Attachment {
   @@index([uploaderId])
 }
 
-enum UserRole {
-  STUDENT
-  ADMIN
-}
-
 enum UserStatus {
   PENDING
   ACTIVE
@@ -251,4 +245,43 @@ model Message {
 
   @@index([conversationId, createdAt])
   @@index([senderId])
+}
+
+model AdminAccount {
+  id          String         @id @default(cuid())
+  email       String         @unique
+  googleId    String?        @unique
+  displayName String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  sessions    AdminSession[]
+  auditLogs   AdminAuditLog[]
+}
+
+model AdminSession {
+  id             String       @id @default(cuid())
+  adminAccountId String
+  tokenHash      String       @unique
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+
+  adminAccount   AdminAccount @relation(fields: [adminAccountId], references: [id], onDelete: Cascade)
+
+  @@index([adminAccountId])
+}
+
+model AdminAuditLog {
+  id             String        @id @default(cuid())
+  adminAccountId String?
+  action         String
+  details        String?
+  ipAddress      String?
+  createdAt      DateTime      @default(now())
+
+  adminAccount   AdminAccount? @relation(fields: [adminAccountId], references: [id], onDelete: SetNull)
+
+  @@index([adminAccountId])
+  @@index([action])
+  @@index([createdAt])
 }

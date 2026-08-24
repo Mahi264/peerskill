@@ -51,6 +51,11 @@ export function getExpectedGraduationYear(batchYear: number | null | undefined):
  * 2. Institutional Roll Format: 0101cs241065@mitsgwl.ac.in
  *    - 0101 prefix + branch code + 2 digits batch year (24 -> 2024 batch, 2028 graduation)
  */
+export function isCollegeEmail(email: string, domain = "mitsgwl.ac.in"): boolean {
+  const clean = (email || "").trim().toLowerCase();
+  return clean.endsWith(`@${domain.toLowerCase().trim()}`);
+}
+
 export function parseMitsEmail(email: string): MitsEmailParseResult {
   const clean = (email || "").trim().toLowerCase();
   const domain = "mitsgwl.ac.in";

@@ -52,6 +52,7 @@ export function getGoogleJWKS() {
 export interface VerifyGoogleIdTokenOptions {
   expectedClientId?: string;
   expectedDomain?: string;
+  allowedAdminEmails?: string[];
   expectedNonce?: string;
   jwksOverride?: Parameters<typeof jwtVerify>[1];
 }
@@ -106,14 +107,21 @@ export async function verifyAndValidateGoogleIdToken(
     return { valid: false, error: "UNVERIFIED_EMAIL" };
   }
 
-  // Domain check (@mitsgwl.ac.in)
+  // Domain / Admin check
   const domain = (options.expectedDomain ?? "mitsgwl.ac.in").toLowerCase().trim();
   const userEmail = (payload.email ?? "").toLowerCase().trim();
 
   const isEmailMatch = userEmail.endsWith(`@${domain}`);
   const isHdMatch = payload.hd ? payload.hd.toLowerCase().trim() === domain : true;
+  const isCollegeDomain = isEmailMatch && isHdMatch;
 
-  if (!isEmailMatch || !isHdMatch) {
+  const isAllowedAdmin = Boolean(
+    options.allowedAdminEmails?.some(
+      (e) => e && e.toLowerCase().trim() === userEmail,
+    ),
+  );
+
+  if (!isCollegeDomain && !isAllowedAdmin) {
     return { valid: false, error: "INVALID_COLLEGE_DOMAIN" };
   }
 

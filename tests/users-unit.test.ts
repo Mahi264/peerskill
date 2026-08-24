@@ -22,7 +22,6 @@ describe("GET /api/users/[id] (Unit Tests)", () => {
     vi.spyOn(auth, "getAuthenticatedUser").mockResolvedValueOnce({
       id: "viewer-1",
       email: "viewer@mitsgwl.ac.in",
-      role: "STUDENT",
       status: "SUSPENDED",
       googleId: null,
       passwordHash: null,
@@ -43,7 +42,6 @@ describe("GET /api/users/[id] (Unit Tests)", () => {
     vi.spyOn(auth, "getAuthenticatedUser").mockResolvedValueOnce({
       id: "viewer-1",
       email: "viewer@mitsgwl.ac.in",
-      role: "STUDENT",
       status: "ACTIVE",
       googleId: null,
       passwordHash: null,

@@ -163,7 +163,6 @@ describe("Google OAuth 2.0 / OIDC Authentication Integration (SQLite)", () => {
     expect(dbUser?.googleId).toBe("google-sub-firsttime");
     expect(dbUser?.collegeEmailVerified).toBe(true);
     expect(dbUser?.status).toBe("PENDING");
-    expect(dbUser?.role).toBe("STUDENT");
 
     // Verify PeerSkill local session created
     const cookieHeader = res.headers.get("set-cookie");

@@ -178,7 +178,6 @@ export async function PUT(request: Request) {
           id: updatedUser.id,
           email: updatedUser.email,
           collegeEmailVerified: updatedUser.collegeEmailVerified,
-          role: updatedUser.role,
           status: updatedUser.status,
           createdAt: updatedUser.createdAt.toISOString(),
         },

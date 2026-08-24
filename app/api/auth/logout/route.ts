@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { revokeSession, SESSION_COOKIE_NAME } from "@/lib/session";
+import { hashSessionToken, revokeSession, SESSION_COOKIE_NAME } from "@/lib/session";
+import { prisma } from "@/lib/prisma";
 
 function getSessionTokenFromRequest(request: Request): string | null {
   if (
@@ -35,7 +36,11 @@ export async function POST(request: Request) {
   const rawToken = getSessionTokenFromRequest(request);
 
   if (rawToken) {
-    await revokeSession(rawToken);
+    const tokenHash = hashSessionToken(rawToken);
+    await Promise.all([
+      revokeSession(rawToken),
+      prisma.adminSession.deleteMany({ where: { tokenHash } }).catch(() => {}),
+    ]);
   }
 
   const response = NextResponse.json(

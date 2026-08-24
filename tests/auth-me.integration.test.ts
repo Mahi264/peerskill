@@ -67,11 +67,11 @@ describe("GET /api/auth/me (Integration - Real SQLite)", () => {
     expect(response.status).toBe(200);
 
     const json = await response.json();
+    expect(json.data.principalType).toBe("STUDENT");
     expect(json.data.user).toMatchObject({
       id: user.id,
       email,
       collegeEmailVerified: true,
-      role: "STUDENT",
       status: "ACTIVE",
       profile: null,
       userSkills: [],

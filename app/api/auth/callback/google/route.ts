@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 
+import {
+  checkAndBootstrapInitialAdmin,
+  createAdminSession,
+  getAdminAccount,
+} from "@/lib/admin";
 import { env } from "@/lib/env";
-import { normalizeMitsDisplayName, parseMitsEmail } from "@/lib/mits-email";
+import { isCollegeEmail, normalizeMitsDisplayName, parseMitsEmail } from "@/lib/mits-email";
 import {
   GOOGLE_CODE_VERIFIER_COOKIE,
   GOOGLE_NONCE_COOKIE,
@@ -96,9 +101,16 @@ export async function GET(request: Request) {
     | VerifyGoogleIdTokenOptions["jwksOverride"]
     | undefined;
 
+  const activeAdmin = await getAdminAccount();
+  const allowedAdminEmails = [
+    activeAdmin?.email,
+    env.PEERSKILL_INITIAL_ADMIN_EMAIL,
+  ].filter(Boolean) as string[];
+
   const validation = await verifyAndValidateGoogleIdToken(idToken, {
     expectedClientId: env.GOOGLE_CLIENT_ID,
     expectedDomain: env.COLLEGE_EMAIL_DOMAIN,
+    allowedAdminEmails,
     expectedNonce: storedNonce,
     jwksOverride,
   });
@@ -116,26 +128,86 @@ export async function GET(request: Request) {
     typeof payload.name === "string" && payload.name.trim()
       ? payload.name.trim()
       : null;
-  const googleName = rawGoogleName ? normalizeMitsDisplayName(rawGoogleName) : null;
 
-  const parsedEmail = parseMitsEmail(cleanEmail);
+  // 1. CLASSIFICATION: Institutional MITS Student
+  if (isCollegeEmail(cleanEmail)) {
+    const googleName = rawGoogleName ? normalizeMitsDisplayName(rawGoogleName) : null;
+    const parsedEmail = parseMitsEmail(cleanEmail);
 
-  let user = await prisma.user.findFirst({
-    where: {
-      OR: [{ email: cleanEmail }, { googleId }],
-    },
-    include: {
-      profile: true,
-    },
-  });
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [{ email: cleanEmail }, { googleId }],
+      },
+      include: {
+        profile: true,
+      },
+    });
 
-  if (user) {
-    if (!user.googleId || !user.collegeEmailVerified) {
-      user = await prisma.user.update({
-        where: { id: user.id },
+    if (user) {
+      if (!user.googleId || !user.collegeEmailVerified) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            googleId: user.googleId ?? googleId,
+            collegeEmailVerified: true,
+          },
+          include: {
+            profile: true,
+          },
+        });
+      }
+
+      // Synchronize Google-derived identity without overwriting student-configured metadata
+      if (!user.profile) {
+        await prisma.profile.create({
+          data: {
+            userId: user.id,
+            fullName: googleName || cleanEmail.split("@")[0],
+            avatarUrl: null,
+            branch: parsedEmail.branchName || null,
+            graduationYear: parsedEmail.expectedGraduationYear || null,
+          },
+        });
+      } else {
+        const profileUpdates: {
+          fullName?: string;
+          avatarUrl?: string | null;
+          branch?: string | null;
+          graduationYear?: number | null;
+        } = {};
+
+        if (googleName && user.profile.fullName !== googleName) {
+          profileUpdates.fullName = googleName;
+        }
+        if (!user.profile.branch && parsedEmail.branchName) {
+          profileUpdates.branch = parsedEmail.branchName;
+        }
+        if (!user.profile.graduationYear && parsedEmail.expectedGraduationYear) {
+          profileUpdates.graduationYear = parsedEmail.expectedGraduationYear;
+        }
+
+        if (Object.keys(profileUpdates).length > 0) {
+          await prisma.profile.update({
+            where: { userId: user.id },
+            data: profileUpdates,
+          });
+        }
+      }
+    } else {
+      user = await prisma.user.create({
         data: {
-          googleId: user.googleId ?? googleId,
+          email: cleanEmail,
+          googleId,
           collegeEmailVerified: true,
+          status: "PENDING",
+          profile: {
+            create: {
+              fullName: googleName || cleanEmail.split("@")[0],
+              avatarUrl: null,
+              branch: parsedEmail.branchName || null,
+              graduationYear: parsedEmail.expectedGraduationYear || null,
+            },
+          },
         },
         include: {
           profile: true,
@@ -143,84 +215,55 @@ export async function GET(request: Request) {
       });
     }
 
-    // Synchronize Google-derived identity without overwriting student-configured metadata
-    if (!user.profile) {
-      await prisma.profile.create({
-        data: {
-          userId: user.id,
-          fullName: googleName || cleanEmail.split("@")[0],
-          avatarUrl: null,
-          branch: parsedEmail.branchName || null,
-          graduationYear: parsedEmail.expectedGraduationYear || null,
-        },
-      });
-    } else {
-      const profileUpdates: {
-        fullName?: string;
-        avatarUrl?: string | null;
-        branch?: string | null;
-        graduationYear?: number | null;
-      } = {};
+    const { rawToken } = await createSession(user.id);
+    const destination = user.status === "PENDING" ? "/onboarding" : "/home";
+    const response = NextResponse.redirect(new URL(destination, request.url));
 
-      if (googleName && user.profile.fullName !== googleName) {
-        profileUpdates.fullName = googleName;
-      }
-      if (!user.profile.branch && parsedEmail.branchName) {
-        profileUpdates.branch = parsedEmail.branchName;
-      }
-      if (!user.profile.graduationYear && parsedEmail.expectedGraduationYear) {
-        profileUpdates.graduationYear = parsedEmail.expectedGraduationYear;
-      }
-
-      if (Object.keys(profileUpdates).length > 0) {
-        await prisma.profile.update({
-          where: { userId: user.id },
-          data: profileUpdates,
-        });
-      }
-    }
-  } else {
-    user = await prisma.user.create({
-      data: {
-        email: cleanEmail,
-        googleId,
-        collegeEmailVerified: true,
-        status: "PENDING",
-        role: "STUDENT",
-        profile: {
-          create: {
-            fullName: googleName || cleanEmail.split("@")[0],
-            avatarUrl: null,
-            branch: parsedEmail.branchName || null,
-            graduationYear: parsedEmail.expectedGraduationYear || null,
-          },
-        },
-      },
-      include: {
-        profile: true,
-      },
+    response.cookies.set({
+      name: SESSION_COOKIE_NAME,
+      value: rawToken,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: Math.floor(DEFAULT_SESSION_DURATION_MS / 1000),
     });
+
+    response.cookies.delete(GOOGLE_OAUTH_STATE_COOKIE);
+    response.cookies.delete(GOOGLE_CODE_VERIFIER_COOKIE);
+    response.cookies.delete(GOOGLE_NONCE_COOKIE);
+
+    return response;
   }
 
-  const { rawToken } = await createSession(user.id);
+  // 2. CLASSIFICATION: Platform Administrator
+  const adminAccount = await checkAndBootstrapInitialAdmin(
+    cleanEmail,
+    googleId,
+    rawGoogleName,
+  );
 
-  const destination = user.status === "PENDING" ? "/onboarding" : "/home";
-  const response = NextResponse.redirect(new URL(destination, request.url));
+  if (adminAccount) {
+    const { rawToken } = await createAdminSession(adminAccount.id);
+    const response = NextResponse.redirect(new URL("/admin", request.url));
 
-  response.cookies.set({
-    name: SESSION_COOKIE_NAME,
-    value: rawToken,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: Math.floor(DEFAULT_SESSION_DURATION_MS / 1000),
-  });
+    response.cookies.set({
+      name: SESSION_COOKIE_NAME,
+      value: rawToken,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: Math.floor(DEFAULT_SESSION_DURATION_MS / 1000),
+    });
 
-  // Clear temporary OAuth cookies
-  response.cookies.delete(GOOGLE_OAUTH_STATE_COOKIE);
-  response.cookies.delete(GOOGLE_CODE_VERIFIER_COOKIE);
-  response.cookies.delete(GOOGLE_NONCE_COOKIE);
+    response.cookies.delete(GOOGLE_OAUTH_STATE_COOKIE);
+    response.cookies.delete(GOOGLE_CODE_VERIFIER_COOKIE);
+    response.cookies.delete(GOOGLE_NONCE_COOKIE);
 
-  return response;
+    return response;
+  }
+
+  // 3. CLASSIFICATION: Non-MITS / Unauthorized Account
+  return createErrorRedirect(request, "UNAUTHORIZED_ACCOUNT");
 }

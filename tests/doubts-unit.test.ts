@@ -83,7 +83,6 @@ function fakeSession(status: "PENDING" | "ACTIVE" | "SUSPENDED" = "ACTIVE") {
     user: {
       id: "user-1",
       email: "student@college.edu",
-      role: "STUDENT",
       status,
       createdAt: new Date(),
     },

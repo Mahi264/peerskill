@@ -22,6 +22,9 @@ vi.mock("@/lib/prisma", () => ({
     userSkill: {
       findMany: mockUserSkillFindMany,
     },
+    adminSession: {
+      findUnique: vi.fn().mockResolvedValue(null),
+    },
   },
 }));
 
@@ -60,7 +63,6 @@ function fakeSession(overrides: Record<string, unknown> = {}) {
       email: "active@college.edu",
       passwordHash: "$argon2id$secretpasswordhash",
       collegeEmailVerified: false,
-      role: "STUDENT",
       status: "ACTIVE",
       createdAt: new Date("2026-01-01T00:00:00Z"),
       updatedAt: new Date("2026-01-01T00:00:00Z"),
@@ -85,11 +87,11 @@ describe("GET /api/auth/me (Unit Tests)", () => {
     expect(response.status).toBe(200);
     const json = await response.json();
 
+    expect(json.data.principalType).toBe("STUDENT");
     expect(json.data.user).toEqual({
       id: "user-cuid-123",
       email: "active@college.edu",
       collegeEmailVerified: false,
-      role: "STUDENT",
       status: "ACTIVE",
       createdAt: "2026-01-01T00:00:00.000Z",
       profile: null,

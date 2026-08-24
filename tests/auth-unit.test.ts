@@ -16,7 +16,7 @@ vi.mock("@/lib/session", async (importOriginal) => {
   };
 });
 
-import { getAuthenticatedUser, hasRole } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/auth";
 import { SESSION_COOKIE_NAME } from "@/lib/session";
 
 function createRequestWithCookie(rawToken?: string): Request {
@@ -36,7 +36,6 @@ function fakeUser(overrides: Record<string, unknown> = {}) {
     email: "student@college.edu",
     passwordHash: "$argon2id$secret",
     collegeEmailVerified: true,
-    role: "STUDENT" as const,
     status: "ACTIVE" as const,
     createdAt: new Date("2026-01-01T00:00:00Z"),
     updatedAt: new Date("2026-01-01T00:00:00Z"),
@@ -99,17 +98,5 @@ describe("getAuthenticatedUser (Unit Tests)", () => {
     await getAuthenticatedUser(createRequestWithCookie(rawToken));
 
     expect(mockFindValidSession).toHaveBeenCalledWith(rawToken);
-  });
-});
-
-describe("hasRole (Unit Tests)", () => {
-  it("returns true when user has the matching role", () => {
-    const user = fakeUser({ role: "STUDENT" });
-    expect(hasRole(user, "STUDENT")).toBe(true);
-  });
-
-  it("returns false when user does not have the matching role", () => {
-    const user = fakeUser({ role: "STUDENT" });
-    expect(hasRole(user, "ADMIN")).toBe(false);
   });
 });

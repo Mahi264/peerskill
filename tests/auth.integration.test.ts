@@ -55,7 +55,6 @@ describe("getAuthenticatedUser (Integration - Real SQLite)", () => {
         email,
         passwordHash,
         status: "ACTIVE",
-        role: "STUDENT",
       },
     });
 

@@ -75,7 +75,6 @@ function fakeSession(userId = "user-2", status: "PENDING" | "ACTIVE" | "SUSPENDE
     user: {
       id: userId,
       email: "helper@college.edu",
-      role: "STUDENT",
       status,
       createdAt: new Date(),
     },

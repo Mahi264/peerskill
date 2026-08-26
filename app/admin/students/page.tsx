@@ -13,7 +13,6 @@ import {
   Users,
 } from "lucide-react";
 
-import { AdminShell } from "@/components/admin/admin-shell";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -88,8 +87,7 @@ export default function AdminStudentsPage() {
   }, [debouncedQuery, statusFilter, page]);
 
   return (
-    <AdminShell>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -284,6 +282,5 @@ export default function AdminStudentsPage() {
           </div>
         )}
       </div>
-    </AdminShell>
   );
 }

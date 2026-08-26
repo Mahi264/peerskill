@@ -2,7 +2,8 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import ConnectionsPage from "@/app/connections/page";
+import ConnectionsPage from "@/app/(student)/connections/page";
+import { StudentAuthProvider } from "@/components/auth/student-auth-context";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -17,75 +18,71 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-describe("Connections Page (app/connections/page.tsx)", () => {
+describe("Connections Page (app/(student)/connections/page.tsx)", () => {
   it("renders Connected, Incoming, and Outgoing tabs and displays peer connection data", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/api/auth/me")) {
-          return Promise.resolve(
-            new Response(
-              JSON.stringify({
-                data: {
-                  user: { id: "viewer-1", email: "viewer@mitsgwl.ac.in", status: "ACTIVE" },
-                  profile: { fullName: "Viewer Student" },
-                },
-              }),
-              { status: 200 }
-            )
-          );
-        }
-
         if (url.includes("/api/connections")) {
-          return Promise.resolve(
-            new Response(
-              JSON.stringify({
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve({
                 data: {
                   connected: [
                     {
                       id: "conn-1",
-                      connectedAt: new Date().toISOString(),
+                      connectedAt: "2026-08-20T10:00:00.000Z",
                       peer: {
                         id: "peer-1",
-                        fullName: "Priya Sharma",
+                        fullName: "Aarav Sharma",
                         avatarUrl: null,
-                        branch: "Computer Science & Engineering (CSE)",
+                        branch: "CSE",
                         section: "A",
-                        graduationYear: 2028,
-                        bio: "Coding enthusiast",
+                        graduationYear: 2026,
+                        bio: "Passionate about algorithms.",
                         helpAvailable: true,
-                        skills: [{ id: "sk1", name: "React", slug: "react", level: "ADVANCED" }],
+                        helpStatus: "Free for DSA doubts",
+                        skills: [
+                          {
+                            id: "s-1",
+                            name: "C++",
+                            slug: "cpp",
+                            level: "ADVANCED",
+                          },
+                        ],
                       },
                     },
                   ],
                   incoming: [
                     {
                       id: "conn-2",
-                      createdAt: new Date().toISOString(),
+                      createdAt: "2026-08-21T11:00:00.000Z",
                       requester: {
                         id: "peer-2",
-                        fullName: "Amit Patel",
+                        fullName: "Priya Patel",
                         avatarUrl: null,
-                        branch: "Information Technology (IT)",
+                        branch: "IT",
                         section: "B",
-                        graduationYear: 2028,
+                        graduationYear: 2027,
                         bio: null,
                         helpAvailable: true,
-                        skills: [{ id: "sk2", name: "Python", slug: "python", level: "INTERMEDIATE" }],
+                        skills: [],
                       },
                     },
                   ],
                   outgoing: [
                     {
                       id: "conn-3",
-                      createdAt: new Date().toISOString(),
+                      createdAt: "2026-08-22T12:00:00.000Z",
                       receiver: {
                         id: "peer-3",
-                        fullName: "Rahul Verma",
+                        fullName: "Rohan Gupta",
                         avatarUrl: null,
-                        branch: "Civil Engineering",
-                        section: null,
-                        graduationYear: 2027,
+                        branch: "ECE",
+                        section: "A",
+                        graduationYear: 2026,
                         bio: null,
                         helpAvailable: false,
                         skills: [],
@@ -99,37 +96,51 @@ describe("Connections Page (app/connections/page.tsx)", () => {
                   },
                 },
               }),
-              { status: 200 }
-            )
-          );
+          });
         }
 
-        return Promise.resolve(new Response(JSON.stringify({ error: "Not found" }), { status: 404 }));
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+          json: () => Promise.resolve({}),
+        });
       })
     );
 
-    render(React.createElement(ConnectionsPage));
+    render(
+      React.createElement(
+        StudentAuthProvider,
+        {
+          initialUser: {
+            id: "user-1",
+            email: "student@mitsgwl.ac.in",
+            status: "ACTIVE",
+          },
+          initialProfile: {
+            fullName: "Test Student",
+            helpAvailable: true,
+          },
+        },
+        React.createElement(ConnectionsPage)
+      )
+    );
 
-    // Check header
-    expect(await screen.findByText("Campus Connections")).toBeInTheDocument();
+    // Connected tab is default active
+    expect(await screen.findByText("Aarav Sharma")).toBeInTheDocument();
+    expect(screen.getByText(/Passionate about algorithms/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /message/i })).toBeInTheDocument();
 
-    // Check connected tab item
-    expect(await screen.findByText("Priya Sharma")).toBeInTheDocument();
-    expect(screen.getAllByText("Connected").length).toBeGreaterThan(0);
-
-    // Switch to Incoming tab
-    const incomingTab = screen.getByRole("button", { name: /Incoming Requests/i });
+    // Click Incoming Requests Tab
+    const incomingTab = screen.getByRole("button", { name: /incoming/i });
     fireEvent.click(incomingTab);
+    expect(await screen.findByText("Priya Patel")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /accept/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /decline/i })).toBeInTheDocument();
 
-    expect(await screen.findByText("Amit Patel")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Accept/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Decline/i })).toBeInTheDocument();
-
-    // Switch to Outgoing tab
-    const outgoingTab = screen.getByRole("button", { name: /Outgoing Requests/i });
+    // Click Outgoing Requests Tab
+    const outgoingTab = screen.getByRole("button", { name: /outgoing/i });
     fireEvent.click(outgoingTab);
-
-    expect(await screen.findByText("Rahul Verma")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Cancel Request/i })).toBeInTheDocument();
+    expect(await screen.findByText("Rohan Gupta")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /cancel request/i })).toBeInTheDocument();
   });
 });

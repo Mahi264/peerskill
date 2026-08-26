@@ -12,7 +12,6 @@ import {
   Users,
 } from "lucide-react";
 
-import { AdminShell } from "@/components/admin/admin-shell";
 import { Card } from "@/components/ui/card";
 
 interface StatsType {
@@ -63,8 +62,7 @@ export default function AdminOverviewPage() {
   }, []);
 
   return (
-    <AdminShell>
-      <div className="space-y-8">
+    <div className="space-y-8">
         {/* Header Title */}
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[color:var(--color-text)]">
@@ -276,6 +274,5 @@ export default function AdminOverviewPage() {
           </div>
         ) : null}
       </div>
-    </AdminShell>
   );
 }

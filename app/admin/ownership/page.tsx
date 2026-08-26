@@ -10,7 +10,6 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-import { AdminShell } from "@/components/admin/admin-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -101,8 +100,7 @@ export default function AdminOwnershipPage() {
   }
 
   return (
-    <AdminShell>
-      <div className="space-y-8 max-w-4xl">
+    <div className="space-y-8 max-w-4xl">
         {/* Header */}
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[color:var(--color-text)] flex items-center gap-2.5">
@@ -307,6 +305,5 @@ export default function AdminOwnershipPage() {
           </div>
         )}
       </div>
-    </AdminShell>
   );
 }

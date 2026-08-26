@@ -19,10 +19,15 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export interface AdminShellProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  initialAdmin?: {
+    id: string;
+    email: string;
+    displayName: string;
+  } | null;
 }
 
-export function AdminShell({ children }: AdminShellProps) {
+export function AdminShell({ children, initialAdmin }: AdminShellProps) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -30,11 +35,13 @@ export function AdminShell({ children }: AdminShellProps) {
     id: string;
     email: string;
     displayName: string;
-  } | null>(null);
-  const [loading, setLoading] = React.useState(true);
+  } | null>(initialAdmin || null);
+  const [loading, setLoading] = React.useState(!initialAdmin);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
 
   React.useEffect(() => {
+    if (initialAdmin) return;
+
     let ignore = false;
 
     async function checkAuth() {
@@ -70,7 +77,7 @@ export function AdminShell({ children }: AdminShellProps) {
     return () => {
       ignore = true;
     };
-  }, [router]);
+  }, [initialAdmin, router]);
 
   async function handleLogout() {
     try {
@@ -118,6 +125,7 @@ export function AdminShell({ children }: AdminShellProps) {
         </div>
 
         <button
+          type="button"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="p-1.5 rounded-lg text-[color:var(--color-text-muted)] hover:bg-[color:var(--color-surface-muted)]"
           aria-label="Toggle menu"

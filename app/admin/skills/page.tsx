@@ -10,7 +10,6 @@ import {
   Users,
 } from "lucide-react";
 
-import { AdminShell } from "@/components/admin/admin-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -155,8 +154,7 @@ export default function AdminSkillsPage() {
   );
 
   return (
-    <AdminShell>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -374,6 +372,5 @@ export default function AdminSkillsPage() {
           </div>
         )}
       </div>
-    </AdminShell>
   );
 }

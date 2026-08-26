@@ -463,7 +463,7 @@ export default function OnboardingPage() {
                   </div>
 
                   {skills.length === 0 ? (
-                    <div className="p-6 rounded-xl border border-dashed border-[color:var(--color-border)] text-center text-xs text-[color:var(--color-text-muted)] bg-[color:var(--color-surface-muted)]/20">
+                    <div className="p-6 rounded-xl border border-dashed border-[color:var(--color-border)] text-center text-xs text-[color:var(--color-text-muted)] bg-white">
                       No skills added yet. Select from the options above or type a custom skill.
                     </div>
                   ) : (

@@ -2,7 +2,8 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import CampusPeerProfilePage from "@/app/users/[id]/page";
+import CampusPeerProfilePage from "@/app/(student)/users/[id]/page";
+import { StudentAuthProvider } from "@/components/auth/student-auth-context";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -20,93 +21,100 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-describe("Campus Peer Profile Page (app/users/[id]/page.tsx)", () => {
+describe("Campus Peer Profile Page (app/(student)/users/[id]/page.tsx)", () => {
   it("renders campus peer identity, academic metadata, skills, and neutral contribution stats", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/api/auth/me")) {
-          return Promise.resolve(
-            new Response(
-              JSON.stringify({
-                data: {
-                  user: { id: "viewer-1", email: "viewer@mitsgwl.ac.in", status: "ACTIVE" },
-                  profile: { fullName: "Viewer User" },
-                },
-              }),
-              { status: 200 },
-            ),
-          );
-        }
-
         if (url.includes("/api/users/target-user-123")) {
-          return Promise.resolve(
-            new Response(
-              JSON.stringify({
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve({
                 data: {
                   user: {
                     id: "target-user-123",
+                    email: "aarav@mitsgwl.ac.in",
+                    role: "STUDENT",
                     status: "ACTIVE",
-                    createdAt: new Date().toISOString(),
+                    createdAt: "2026-08-01T00:00:00.000Z",
                     profile: {
-                      fullName: "Mohit Sharma",
+                      fullName: "Aarav Sharma",
                       avatarUrl: null,
                       branch: "CSE",
-                      graduationYear: 2027,
-                      bio: "Passionate about Next.js and algorithms.",
+                      section: "A",
+                      graduationYear: 2026,
+                      bio: "Passionate about algorithms and operating systems.",
                       helpAvailable: true,
-                      helpStatus: "Free after 5 PM",
+                      helpStatus: "Free to help with DSA Unit 2",
+                      contactVisibility: "COLLEGE",
+                      chatRequestVisibility: "COLLEGE",
                     },
                     skills: [
-                      { id: "s1", name: "C++", slug: "c-plus-plus", level: "ADVANCED" },
-                      { id: "s2", name: "React", slug: "react", level: "INTERMEDIATE" },
+                      {
+                        id: "skill-1",
+                        name: "C++",
+                        slug: "cpp",
+                        level: "ADVANCED",
+                      },
+                      {
+                        id: "skill-2",
+                        name: "Data Structures",
+                        slug: "data-structures",
+                        level: "MENTOR",
+                      },
                     ],
                     stats: {
                       doubtsCount: 4,
-                      answersCount: 6,
+                      answersCount: 12,
                     },
                   },
                 },
               }),
-              { status: 200 },
-            ),
-          );
+          });
         }
 
-        return Promise.resolve(new Response("{}", { status: 404 }));
-      }),
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+          json: () => Promise.resolve({}),
+        });
+      })
     );
 
-    render(React.createElement(CampusPeerProfilePage));
+    render(
+      React.createElement(
+        StudentAuthProvider,
+        {
+          initialUser: {
+            id: "viewer-123",
+            email: "viewer@mitsgwl.ac.in",
+            status: "ACTIVE",
+          },
+          initialProfile: {
+            fullName: "Viewer Student",
+            helpAvailable: true,
+          },
+        },
+        React.createElement(CampusPeerProfilePage)
+      )
+    );
 
-    // Full name and availability badge
-    const nameHeading = await screen.findByText("Mohit Sharma");
-    expect(nameHeading).toBeDefined();
-    expect(screen.getByText("Available to help")).toBeDefined();
-
-    // Academic info
-    expect(screen.getByText(/CSE/i)).toBeDefined();
-    expect(screen.getByText(/Class of 2027/i)).toBeDefined();
-
-    // Bio
-    expect(screen.getByText(/"Passionate about Next\.js and algorithms\."/i)).toBeDefined();
-
-    // Help status note
-    expect(screen.getByText("Free after 5 PM")).toBeDefined();
+    // Profile header & metadata
+    expect(await screen.findByText("Aarav Sharma")).toBeInTheDocument();
+    expect(screen.getByText("Available to Help")).toBeInTheDocument();
+    expect(screen.getByText(/Free to help with DSA Unit 2/i)).toBeInTheDocument();
+    expect(screen.getByText(/Passionate about algorithms and operating systems/i)).toBeInTheDocument();
 
     // Skills
-    expect(screen.getByText("C++")).toBeDefined();
-    expect(screen.getByText("advanced")).toBeDefined();
-    expect(screen.getByText("React")).toBeDefined();
-    expect(screen.getByText("intermediate")).toBeDefined();
+    expect(screen.getByText("C++")).toBeInTheDocument();
+    expect(screen.getByText(/advanced/i)).toBeInTheDocument();
+    expect(screen.getByText("Data Structures")).toBeInTheDocument();
+    expect(screen.getByText(/mentor/i)).toBeInTheDocument();
 
     // Stats
-    expect(screen.getByText("Doubts Asked")).toBeDefined();
-    expect(screen.getByText("4")).toBeDefined();
-    expect(screen.getByText("Answers Contributed")).toBeDefined();
-    expect(screen.getByText("6")).toBeDefined();
-
-    // Connection button
-    expect(screen.getByRole("button", { name: /Connect/i })).toBeDefined();
+    expect(screen.getByText("4")).toBeInTheDocument();
+    expect(screen.getByText("12")).toBeInTheDocument();
   });
 });

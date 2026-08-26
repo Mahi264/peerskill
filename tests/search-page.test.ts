@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import React from "react";
 import { render, screen } from "@testing-library/react";
 
-import SearchPage from "@/app/search/page";
+import SearchPage from "@/app/(student)/search/page";
+import { StudentAuthProvider } from "@/components/auth/student-auth-context";
 
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
@@ -22,39 +23,55 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-describe("Dedicated Knowledge Search Page (app/search/page.tsx)", () => {
-  it("renders the initial state when q is empty", async () => {
+describe("Dedicated Knowledge Search Page (app/(student)/search/page.tsx)", () => {
+  it("renders the search input, tab switchers, and filter controls", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/api/auth/me")) {
-          return Promise.resolve(
-            new Response(
-              JSON.stringify({
+        if (url.includes("/api/search/knowledge")) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve({
                 data: {
-                  user: { id: "u-1", email: "user@mitsgwl.ac.in", status: "ACTIVE" },
-                  profile: { fullName: "Aarav Sharma" },
+                  results: [],
+                  pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
                 },
               }),
-              { status: 200 },
-            ),
-          );
+          });
         }
-        return Promise.resolve(new Response(JSON.stringify({ data: { doubts: [] } }), { status: 200 }));
-      }),
+
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+          json: () => Promise.resolve({}),
+        });
+      })
     );
 
-    render(React.createElement(SearchPage));
+    render(
+      React.createElement(
+        StudentAuthProvider,
+        {
+          initialUser: {
+            id: "user-1",
+            email: "student@mitsgwl.ac.in",
+            status: "ACTIVE",
+          },
+          initialProfile: {
+            fullName: "Test Student",
+            helpAvailable: true,
+          },
+        },
+        React.createElement(SearchPage)
+      )
+    );
 
-    // Wait for auth check to finish and page to render
-    const heading = await screen.findByText("Search campus knowledge");
-    expect(heading).toBeDefined();
-
-    expect(screen.getByText(/Try a course, error message, concept, or skill/i)).toBeDefined();
-    expect(screen.getByText("Popular Queries")).toBeDefined();
-
-    // Verify user profile name and avatar initials render in AppSidebar & AppHeader
-    expect(screen.getByText("Aarav Sharma")).toBeDefined();
-    expect(screen.getAllByText("AS").length).toBeGreaterThan(0);
+    expect(
+      await screen.findByPlaceholderText(/Search campus doubts & solutions/i)
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Campus Doubts & Solutions/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Campus Peers & Skills/i })).toBeInTheDocument();
   });
 });

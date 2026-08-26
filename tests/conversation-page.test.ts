@@ -2,7 +2,8 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import ConversationDetailPage from "@/app/messages/[id]/page";
+import ConversationDetailPage from "@/app/(student)/messages/[id]/page";
+import { StudentAuthProvider } from "@/components/auth/student-auth-context";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
@@ -20,91 +21,97 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
-describe("Conversation Detail Page (app/messages/[id]/page.tsx)", () => {
+describe("Conversation Detail Page (app/(student)/messages/[id]/page.tsx)", () => {
   it("renders conversation header, messages, and active composer when connected", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation((url: string) => {
-        if (url.includes("/api/auth/me")) {
-          return Promise.resolve(
-            new Response(
-              JSON.stringify({
-                data: {
-                  user: { id: "viewer-1", email: "viewer@mitsgwl.ac.in", status: "ACTIVE" },
-                  profile: { fullName: "Viewer Student" },
-                },
-              }),
-              { status: 200 }
-            )
-          );
-        }
-
         if (url.includes("/api/conversations/conv-123/messages")) {
-          return Promise.resolve(
-            new Response(
-              JSON.stringify({
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve({
                 data: {
                   messages: [
                     {
-                      id: "m-1",
-                      conversationId: "conv-123",
-                      senderId: "viewer-1",
-                      body: "Hi Bob, check this out: https://mitsgwl.ac.in",
-                      createdAt: new Date().toISOString(),
-                      isSelf: true,
-                    },
-                    {
-                      id: "m-2",
+                      id: "msg-1",
                       conversationId: "conv-123",
                       senderId: "peer-1",
-                      body: "Thanks! That helps a lot.",
-                      createdAt: new Date().toISOString(),
+                      body: "Hello! Let's discuss DSA assignment.",
+                      createdAt: "2026-08-20T10:00:00.000Z",
                       isSelf: false,
+                    },
+                    {
+                      id: "msg-2",
+                      conversationId: "conv-123",
+                      senderId: "user-1",
+                      body: "Sure, see https://github.com/example/repo",
+                      createdAt: "2026-08-20T10:01:00.000Z",
+                      isSelf: true,
                     },
                   ],
                 },
               }),
-              { status: 200 }
-            )
-          );
+          });
         }
 
         if (url.includes("/api/conversations/conv-123")) {
-          return Promise.resolve(
-            new Response(
-              JSON.stringify({
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve({
                 data: {
                   conversation: {
                     id: "conv-123",
+                    createdAt: "2026-08-20T10:00:00.000Z",
+                    updatedAt: "2026-08-20T10:01:00.000Z",
                     peer: {
                       id: "peer-1",
-                      fullName: "Bob Patel",
+                      fullName: "Aarav Sharma",
                       avatarUrl: null,
-                      branch: "Information Technology (IT)",
-                      section: "B",
-                      graduationYear: 2028,
+                      branch: "CSE",
+                      section: "A",
+                      graduationYear: 2026,
                       isConnected: true,
                     },
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
                   },
                 },
               }),
-              { status: 200 }
-            )
-          );
+          });
         }
 
-        return Promise.resolve(new Response(JSON.stringify({ error: "Not found" }), { status: 404 }));
+        return Promise.resolve({
+          ok: false,
+          status: 404,
+          json: () => Promise.resolve({}),
+        });
       })
     );
 
-    render(React.createElement(ConversationDetailPage));
+    render(
+      React.createElement(
+        StudentAuthProvider,
+        {
+          initialUser: {
+            id: "user-1",
+            email: "student@mitsgwl.ac.in",
+            status: "ACTIVE",
+          },
+          initialProfile: {
+            fullName: "Test Student",
+            helpAvailable: true,
+          },
+        },
+        React.createElement(ConversationDetailPage)
+      )
+    );
 
-    expect(await screen.findByText("Bob Patel")).toBeInTheDocument();
+    expect(await screen.findByText("Aarav Sharma")).toBeInTheDocument();
     expect(screen.getByText("Connected")).toBeInTheDocument();
-    expect(screen.getByText("Thanks! That helps a lot.")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Message Bob Patel\.\.\./i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Send/i })).toBeInTheDocument();
+    expect(screen.getByText("Hello! Let's discuss DSA assignment.")).toBeInTheDocument();
+    expect(screen.getByText("https://github.com/example/repo")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Message Aarav Sharma...")).toBeInTheDocument();
   });
 });

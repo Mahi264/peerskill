@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 
 import { HeaderSearch } from "@/components/layout/header-search";
-import { AppShell } from "@/components/shell/app-shell";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,17 +23,7 @@ import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { AlertBanner } from "@/components/ui/toast";
 import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
-
-interface User {
-  id: string;
-  email: string;
-  status: string;
-}
-
-interface Profile {
-  fullName: string;
-  avatarUrl?: string | null;
-}
+import { ViewerConnectionInfo } from "@/lib/validations/connection";
 
 interface SearchDoubt {
   id: string;
@@ -63,8 +52,6 @@ interface SearchDoubt {
   };
   skills: Array<{ id: string; name: string; slug: string }>;
 }
-
-import { ViewerConnectionInfo } from "@/lib/validations/connection";
 
 interface SearchPeer {
   id: string;
@@ -299,7 +286,7 @@ function SearchPageContent() {
     }
   }
 
-  const suggestedQueries = [
+  const popularKnowledgeQueries = [
     "Data Structures",
     "React useEffect",
     "DBMS Normalization",
@@ -308,41 +295,43 @@ function SearchPageContent() {
   ];
 
   const suggestedPeerSkills = [
-    "React",
     "C++",
     "Python",
+    "Java",
+    "React",
+    "Data Structures",
+    "Algorithms",
+    "DBMS",
     "Machine Learning",
-    "Node.js",
-    "SQL",
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Header Search Input Bar */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-bold tracking-tight text-[color:var(--color-text)]">
-            Campus Discovery
-          </h1>
-
-          <Button
-            asChild
-            size="sm"
-            className="bg-[color:var(--color-primary)] hover:bg-[color:var(--color-primary-hover)] text-white shadow-sm"
-          >
-            <Link
-              href={
-                currentTab === "doubts" && doubtQuery.trim()
-                  ? `/doubts/new?title=${encodeURIComponent(doubtQuery.trim())}`
-                  : "/doubts/new"
-              }
-            >
-              <Plus className="size-4 mr-1.5" />
-              Ask Doubt
-            </Link>
-          </Button>
+    <div className="max-w-5xl mx-auto space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[color:var(--color-border)]/60 pb-5">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2.5">
+            <SearchIcon className="size-6 text-[color:var(--color-primary)]" />
+            <h1 className="text-2xl font-bold tracking-tight text-[color:var(--color-text)]">
+              Campus Discovery
+            </h1>
+          </div>
+          <p className="text-sm text-[color:var(--color-text-muted)]">
+            Search solved course doubts, explore peer answers, and discover verified MITS classmates.
+          </p>
         </div>
 
+        <Link href="/doubts/new">
+          <Button className="gap-2">
+            <Plus className="size-4" />
+            Ask a Doubt
+          </Button>
+        </Link>
+      </div>
+
+      {/* Top Search Controls Bar */}
+      <div className="space-y-4">
+        {/* Full-width Search Input */}
         <HeaderSearch
           key={currentTab}
           initialValue={activeQuery}
@@ -356,7 +345,7 @@ function SearchPageContent() {
           className="max-w-none"
         />
 
-        {/* Mode / Tabs Switcher */}
+        {/* Tab Switcher */}
         <div className="flex items-center gap-2 border-b border-[color:var(--color-border)] pb-2">
           <button
             type="button"
@@ -368,7 +357,7 @@ function SearchPageContent() {
             }`}
           >
             <HelpCircle className="size-4" />
-            <span>Campus Doubts &amp; Solutions</span>
+            <span>Campus Doubts & Solutions</span>
           </button>
 
           <button
@@ -381,81 +370,81 @@ function SearchPageContent() {
             }`}
           >
             <Users className="size-4" />
-            <span>Campus Peers &amp; Skills</span>
+            <span>Campus Peers & Skills</span>
           </button>
         </div>
       </div>
 
-      {/* Non-blocking Error Banner */}
       {error && <AlertBanner variant="error" message={error} />}
 
-      {/* TAB 1: KNOWLEDGE SEARCH (DOUBTS) */}
+      {/* TAB 1: KNOWLEDGE / DOUBTS SEARCH */}
       {currentTab === "doubts" && (
         <div className="space-y-6">
-          {/* Doubts Filter Row */}
-          {doubtQuery.trim() !== "" && (
-            <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white rounded-[var(--radius-md)] border border-[color:var(--color-border)] shadow-sm">
-              <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-                <span className="text-xs font-semibold text-[color:var(--color-text-muted)] uppercase tracking-wider">
-                  Filters:
-                </span>
+          {/* Doubts Filters Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-[color:var(--color-surface)] rounded-[var(--radius-md)] border border-[color:var(--color-border)] shadow-xs">
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+              <span className="text-xs font-semibold text-[color:var(--color-text-muted)] uppercase tracking-wider">
+                Filters:
+              </span>
 
-                {/* Status Filter */}
-                <Select
-                  value={filterStatus}
-                  onChange={(e) => updateFilters({ status: e.target.value })}
-                  className="h-9 text-xs w-32"
-                >
-                  <option value="ALL">All Status</option>
-                  <option value="RESOLVED">Resolved Only</option>
-                  <option value="OPEN">Open Only</option>
-                </Select>
+              {/* Status Filter */}
+              <Select
+                value={filterStatus}
+                onChange={(e) => updateFilters({ status: e.target.value })}
+                className="h-8 text-xs font-medium w-32"
+              >
+                <option value="ALL">All Status</option>
+                <option value="OPEN">Open Only</option>
+                <option value="RESOLVED">Resolved Only</option>
+              </Select>
 
-                {/* Urgency Filter */}
-                <Select
-                  value={filterUrgency}
-                  onChange={(e) => updateFilters({ urgency: e.target.value })}
-                  className="h-9 text-xs w-40"
-                >
-                  <option value="ALL">All Urgency</option>
-                  <option value="EXAM_PREP">Exam Prep</option>
-                  <option value="PROJECT_BLOCKED">Project Blocked</option>
-                  <option value="ASSIGNMENT_STUCK">Assignment Stuck</option>
-                  <option value="CURIOUS">Curious</option>
-                </Select>
-              </div>
-
-              <div className="text-xs text-[color:var(--color-text-muted)] font-medium">
-                {doubtPagination.total} {doubtPagination.total === 1 ? "result" : "results"} found
-              </div>
+              {/* Urgency Filter */}
+              <Select
+                value={filterUrgency}
+                onChange={(e) => updateFilters({ urgency: e.target.value })}
+                className="h-8 text-xs font-medium w-36"
+              >
+                <option value="ALL">All Urgencies</option>
+                <option value="CURIOUS">Curious</option>
+                <option value="ASSIGNMENT_STUCK">Assignment Stuck</option>
+                <option value="PROJECT_BLOCKED">Project Blocked</option>
+                <option value="EXAM_PREP">Exam Prep</option>
+              </Select>
             </div>
-          )}
 
-          {/* Initial Empty State for Doubts */}
+            <div className="text-xs text-[color:var(--color-text-muted)] font-medium">
+              {doubtPagination.total} {doubtPagination.total === 1 ? "result" : "results"} found
+            </div>
+          </div>
+
+          {/* Initial / Empty Query State */}
           {!doubtQuery.trim() && (
-            <Card className="p-8 sm:p-12 text-center border-[color:var(--color-border)] shadow-sm">
-              <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-[color:var(--color-primary)]/10 text-[color:var(--color-primary)] mb-4">
-                <SearchIcon className="size-7" />
+            <Card className="p-8 sm:p-12 text-center space-y-4 border-dashed bg-white border-[color:var(--color-border)] shadow-xs">
+              <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-[color:var(--color-surface-muted)] text-[color:var(--color-text-muted)] mb-1">
+                <SearchIcon className="size-6" />
               </div>
-              <h2 className="text-xl font-bold text-[color:var(--color-text)] mb-2">
-                Search campus knowledge
-              </h2>
-              <p className="text-sm text-[color:var(--color-text-muted)] max-w-md mx-auto mb-6">
-                Try a course, error message, concept, or skill to discover existing doubts and accepted peer answers.
-              </p>
+              <div className="space-y-1">
+                <h2 className="text-base font-bold text-[color:var(--color-text)]">
+                  Search campus knowledge
+                </h2>
+                <p className="text-xs sm:text-sm text-[color:var(--color-text-muted)] max-w-sm mx-auto leading-relaxed">
+                  Try a course, error message, concept, or skill to discover existing doubts and accepted peer answers.
+                </p>
+              </div>
 
-              <div className="space-y-3">
+              <div className="space-y-2.5 pt-2">
                 <p className="text-xs font-semibold uppercase tracking-wider text-[color:var(--color-text-muted)]">
                   Popular Queries
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-2 max-w-lg mx-auto">
-                  {suggestedQueries.map((item) => (
+                  {popularKnowledgeQueries.map((q) => (
                     <button
-                      key={item}
-                      onClick={() => updateFilters({ q: item, page: null })}
-                      className="rounded-full border border-[color:var(--color-border)] bg-white px-3.5 py-1.5 text-xs font-medium text-[color:var(--color-text)] hover:border-[color:var(--color-primary)] hover:text-[color:var(--color-primary)] transition-colors shadow-sm cursor-pointer"
+                      key={q}
+                      type="button"
+                      onClick={() => handleSearchSubmit(q)}
+                      className="rounded-full border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-3.5 py-1.5 text-xs font-medium text-[color:var(--color-text)] hover:border-[color:var(--color-primary)] hover:text-[color:var(--color-primary)] transition-colors shadow-xs cursor-pointer"
                     >
-                      {item}
+                      {q}
                     </button>
                   ))}
                 </div>
@@ -464,67 +453,66 @@ function SearchPageContent() {
           )}
 
           {/* Loading Skeleton */}
-          {loading && (
+          {loading && doubtQuery.trim() && (
             <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <Card key={i} className="p-5 space-y-3 animate-pulse border-[color:var(--color-border)]">
-                  <div className="h-4 bg-gray-200 rounded w-3/4" />
+              {[1, 2, 3].map((n) => (
+                <Card key={n} className="p-6 space-y-3 animate-pulse border-[color:var(--color-border)]">
+                  <div className="h-4 bg-gray-200 rounded w-1/3" />
+                  <div className="h-5 bg-gray-200 rounded w-3/4" />
                   <div className="h-3 bg-gray-200 rounded w-full" />
-                  <div className="h-3 bg-gray-200 rounded w-1/2" />
                 </Card>
               ))}
             </div>
           )}
 
-          {/* No Results State */}
-          {!loading && doubtQuery.trim() !== "" && doubtResults.length === 0 && (
-            <Card className="p-8 text-center border-[color:var(--color-border)] shadow-sm space-y-4 animate-in fade-in duration-200">
+          {/* No Results Fallback */}
+          {!loading && doubtQuery.trim() && doubtResults.length === 0 && (
+            <Card className="p-8 sm:p-12 text-center space-y-4 border-dashed bg-white border-[color:var(--color-border)] shadow-xs">
+              <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-[color:var(--color-surface-muted)] text-[color:var(--color-text-muted)]">
+                <HelpCircle className="size-6" />
+              </div>
               <div className="space-y-1">
-                <h3 className="text-lg font-bold text-[color:var(--color-text)]">
-                  No campus doubts found matching &ldquo;{doubtQuery}&rdquo;
+                <h3 className="text-base font-bold text-[color:var(--color-text)]">
+                  No matching campus doubts found
                 </h3>
-                <p className="text-sm text-[color:var(--color-text-muted)] max-w-md mx-auto">
-                  Try searching with broader terms or different keywords. If your doubt hasn&apos;t been asked yet, post it now!
+                <p className="text-xs sm:text-sm text-[color:var(--color-text-muted)] max-w-sm mx-auto leading-relaxed">
+                  We couldn&apos;t find any questions matching &ldquo;{doubtQuery}&rdquo;. Try different keywords or post your question for classmates!
                 </p>
               </div>
-
-              <div className="pt-2 flex justify-center">
-                <Button
-                  asChild
-                  className="bg-[color:var(--color-primary)] hover:bg-[color:var(--color-primary-hover)] text-white shadow-sm"
-                >
-                  <Link href={`/doubts/new?title=${encodeURIComponent(doubtQuery)}`}>
-                    <Plus className="size-4 mr-1.5" />
-                    Ask a Doubt About This
-                  </Link>
-                </Button>
-              </div>
+              <Button asChild size="sm" className="gap-2">
+                <Link href="/doubts/new">
+                  <Plus className="size-4" />
+                  Ask this Doubt to Peers
+                </Link>
+              </Button>
             </Card>
           )}
 
-          {/* Doubt Results List */}
-          {!loading && doubtQuery.trim() !== "" && doubtResults.length > 0 && (
+          {/* Results Stream */}
+          {!loading && doubtResults.length > 0 && (
             <div className="space-y-4">
               {doubtResults.map((doubt) => (
                 <Card
                   key={doubt.id}
-                  className="border-[color:var(--color-border)] shadow-sm rounded-[var(--radius-md)] overflow-hidden"
+                  className="p-5 sm:p-6 space-y-3.5 border-[color:var(--color-border)] shadow-sm hover:border-[color:var(--color-border-focus)] transition-colors rounded-[var(--radius-md)]"
                 >
-                  <CardContent className="p-5 space-y-3">
+                  <CardContent className="p-0 space-y-3">
+                    {/* Urgency & Status Tags */}
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        {getUrgencyBadge(doubt.urgency)}
                         {doubt.status === "RESOLVED" ? (
-                          <Badge variant="success" className="flex items-center gap-1">
+                          <Badge variant="success" className="gap-1">
                             <CheckCircle2 className="size-3" />
-                            RESOLVED
+                            Resolved
                           </Badge>
                         ) : (
-                          <Badge variant="outline">OPEN</Badge>
+                          <Badge variant="outline">Open</Badge>
                         )}
-                        {getUrgencyBadge(doubt.urgency)}
                       </div>
 
-                      <div className="flex items-center gap-1.5 flex-wrap">
+                      {/* Skill Chips */}
+                      <div className="flex flex-wrap items-center gap-1.5">
                         {doubt.skills.map((s) => (
                           <span
                             key={s.id}
@@ -633,7 +621,7 @@ function SearchPageContent() {
       {currentTab === "peers" && (
         <div className="space-y-6">
           {/* Peer Filters Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-white rounded-[var(--radius-md)] border border-[color:var(--color-border)] shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-[color:var(--color-surface)] rounded-[var(--radius-md)] border border-[color:var(--color-border)] shadow-xs">
             <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
               <span className="text-xs font-semibold text-[color:var(--color-text-muted)] uppercase tracking-wider">
                 Peer Filters:
@@ -643,7 +631,7 @@ function SearchPageContent() {
               <Select
                 value={filterLevel}
                 onChange={(e) => updateFilters({ level: e.target.value })}
-                className="h-9 text-xs w-36"
+                className="h-8 text-xs font-medium w-36"
               >
                 <option value="ALL">All Levels</option>
                 <option value="BEGINNER">Beginner+</option>
@@ -686,7 +674,7 @@ function SearchPageContent() {
                   className={`text-xs px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
                     isSelected
                       ? "bg-[color:var(--color-primary)] text-white border-[color:var(--color-primary)] font-semibold"
-                      : "bg-white text-[color:var(--color-text)] border-[color:var(--color-border)] hover:border-[color:var(--color-primary)]"
+                      : "bg-[color:var(--color-surface)] text-[color:var(--color-text)] border-[color:var(--color-border)] hover:border-[color:var(--color-primary)]"
                   }`}
                 >
                   {sk}
@@ -698,13 +686,13 @@ function SearchPageContent() {
           {/* Loading Skeleton */}
           {loading && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[1, 2, 3, 4].map((i) => (
-                <Card key={i} className="p-5 space-y-3 animate-pulse border-[color:var(--color-border)]">
+              {[1, 2, 3, 4].map((n) => (
+                <Card key={n} className="p-5 space-y-3 animate-pulse border-[color:var(--color-border)]">
                   <div className="flex items-center gap-3">
                     <div className="size-10 rounded-full bg-gray-200" />
-                    <div className="space-y-1 flex-1">
-                      <div className="h-4 bg-gray-200 rounded w-1/2" />
-                      <div className="h-3 bg-gray-200 rounded w-1/3" />
+                    <div className="space-y-1.5 flex-1">
+                      <div className="h-4 bg-gray-200 rounded w-1/3" />
+                      <div className="h-3 bg-gray-200 rounded w-1/2" />
                     </div>
                   </div>
                   <div className="h-3 bg-gray-200 rounded w-full" />
@@ -713,38 +701,33 @@ function SearchPageContent() {
             </div>
           )}
 
-          {/* No Peers State */}
+          {/* No Peers Fallback */}
           {!loading && peerResults.length === 0 && (
-            <Card className="p-8 text-center border-[color:var(--color-border)] shadow-sm space-y-4 animate-in fade-in duration-200">
+            <Card className="p-8 sm:p-12 text-center space-y-4 border-dashed bg-white border-[color:var(--color-border)] shadow-xs">
+              <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-[color:var(--color-surface-muted)] text-[color:var(--color-text-muted)]">
+                <Users className="size-6" />
+              </div>
               <div className="space-y-1">
-                <h3 className="text-lg font-bold text-[color:var(--color-text)]">
-                  No campus peers found
+                <h3 className="text-base font-bold text-[color:var(--color-text)]">
+                  No peers found matching your filters
                 </h3>
-                <p className="text-sm text-[color:var(--color-text-muted)] max-w-md mx-auto">
-                  Try broadening your search terms or resetting your filters.
+                <p className="text-xs sm:text-sm text-[color:var(--color-text-muted)] max-w-sm mx-auto leading-relaxed">
+                  Try clearing your search query or selecting &ldquo;All Levels&rdquo; to find classmates.
                 </p>
               </div>
-              <div className="pt-2 flex justify-center">
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    updateFilters({
-                      peerQuery: null,
-                      peerQ: null,
-                      level: null,
-                      available: null,
-                      skill: null,
-                      page: null,
-                    })
-                  }
-                >
-                  Reset Peer Filters
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  router.push("/search?tab=peers");
+                }}
+              >
+                Clear Peer Filters
+              </Button>
             </Card>
           )}
 
-          {/* Peer Result Cards Grid */}
+          {/* Peer Results Grid */}
           {!loading && peerResults.length > 0 && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -876,64 +859,9 @@ function SearchPageContent() {
 }
 
 export default function SearchPage() {
-  const router = useRouter();
-  const [loading, setLoading] = React.useState(true);
-  const [user, setUser] = React.useState<User | null>(null);
-  const [profile, setProfile] = React.useState<Profile | null>(null);
-
-  React.useEffect(() => {
-    async function checkAuth() {
-      try {
-        const res = await fetch("/api/auth/me");
-        if (!res.ok) {
-          router.replace("/");
-          return;
-        }
-        const json = await res.json();
-        const userData = json?.data?.user;
-        const profileData = userData?.profile || json?.data?.profile || null;
-
-        if (userData?.status === "PENDING") {
-          router.replace("/onboarding");
-          return;
-        }
-
-        setUser(userData);
-        setProfile(profileData);
-      } catch {
-        router.replace("/");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    checkAuth();
-  }, [router]);
-
-  async function handleLogout() {
-    try {
-      await fetch("/api/auth/logout", { method: "POST" });
-    } finally {
-      router.replace("/");
-    }
-  }
-
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-[color:var(--color-bg)] flex items-center justify-center p-6">
-        <div className="flex items-center gap-3 text-[color:var(--color-text-muted)] text-sm font-medium animate-pulse">
-          <div className="size-6 rounded-full border-2 border-[color:var(--color-primary)] border-t-transparent animate-spin" />
-          <span>Loading discovery search...</span>
-        </div>
-      </main>
-    );
-  }
-
   return (
-    <AppShell user={user} profile={profile} onLogout={handleLogout}>
-      <React.Suspense fallback={<div className="p-4 text-center text-sm">Loading...</div>}>
-        <SearchPageContent />
-      </React.Suspense>
-    </AppShell>
+    <React.Suspense fallback={<div className="p-4 text-center text-sm">Loading...</div>}>
+      <SearchPageContent />
+    </React.Suspense>
   );
 }

@@ -150,6 +150,7 @@ export const CACHE_KEYS = {
     const skill = filters?.skill && filters.skill !== "ALL" ? filters.skill.trim().toLowerCase() : "ALL";
     return `home:doubts:status=${status}&urgency=${urgency}&skill=${skill}`;
   },
+  doubtDetail: (doubtId: string) => `doubt:${doubtId}`,
 } as const;
 
 interface CachedPeerProfileWrapper {
@@ -280,7 +281,7 @@ export function updateCachedInboxWithNewMessage(
 }
 
 // ---------------------------------------------------------------------------
-// Home Doubt Feed Synchronization Helpers (Stage 3A)
+// Home Doubt Feed & Doubt Detail Synchronization Helpers (Stage 3)
 // ---------------------------------------------------------------------------
 
 /**
@@ -289,6 +290,20 @@ export function updateCachedInboxWithNewMessage(
  */
 export function invalidateAllDoubtFeeds(): void {
   invalidateData(CACHE_KEYS.DOUBT_FEEDS_PREFIX);
+}
+
+/**
+ * Update cached doubt detail in-place with a 20s TTL and notify subscribers.
+ */
+export function updateCachedDoubtDetail<T>(doubtId: string, data: T): void {
+  setCached(CACHE_KEYS.doubtDetail(doubtId), data, 20_000);
+}
+
+/**
+ * Invalidate a specific cached doubt detail (e.g. upon deletion or moderation removal).
+ */
+export function invalidateDoubtDetail(doubtId: string): void {
+  invalidateData(CACHE_KEYS.doubtDetail(doubtId));
 }
 
 // ---------------------------------------------------------------------------

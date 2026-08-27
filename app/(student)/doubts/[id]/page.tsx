@@ -15,6 +15,14 @@ import { FormattedContent } from "@/components/ui/formatted-content";
 import { AlertBanner } from "@/components/ui/toast";
 import { AcceptedCheckmarkSVG } from "@/components/ui/motion-illustrations";
 import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
+import {
+  CACHE_KEYS,
+  getCached,
+  setCached,
+  subscribe,
+  invalidateData,
+  invalidateAllDoubtFeeds,
+} from "@/lib/data-cache";
 
 interface Author {
   id: string;
@@ -65,9 +73,14 @@ export default function DoubtDetailPage() {
   const doubtId = params?.id as string;
 
   const { user } = useStudentAuth();
-  const [loading, setLoading] = React.useState(true);
 
-  const [doubt, setDoubt] = React.useState<DoubtDetail | null>(null);
+  const detailKey = CACHE_KEYS.doubtDetail(doubtId);
+  const cachedInitial = getCached<DoubtDetail>(detailKey);
+  const [doubt, setDoubt] = React.useState<DoubtDetail | null>(
+    cachedInitial ? cachedInitial.data : null,
+  );
+  const [loading, setLoading] = React.useState(!cachedInitial);
+
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const [successMsg, setSuccessMsg] = React.useState<string | null>(null);
 
@@ -78,31 +91,61 @@ export default function DoubtDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
 
-  // Load doubt details
+  // Load doubt details with caching, Stale-While-Revalidate, and subscription
   React.useEffect(() => {
+    if (!doubtId) return;
+    let ignore = false;
+
     async function loadData() {
-      try {
-        const doubtRes = await fetch(`/api/doubts/${doubtId}`);
-        const doubtJson = await doubtRes.json();
+      const cached = getCached<DoubtDetail>(detailKey);
+      if (!cached || cached.isStale) {
+        try {
+          const doubtRes = await fetch(`/api/doubts/${doubtId}`);
+          const doubtJson = await doubtRes.json();
 
-        if (!doubtRes.ok) {
-          setErrorMsg(doubtJson?.error?.message || "Doubt not found.");
-          setLoading(false);
-          return;
+          if (!doubtRes.ok) {
+            if (!ignore) {
+              setErrorMsg(doubtJson?.error?.message || "Doubt not found.");
+              setDoubt(null);
+              invalidateData(detailKey);
+              setLoading(false);
+            }
+            return;
+          }
+
+          if (!ignore && doubtJson?.data?.doubt) {
+            const freshDoubt: DoubtDetail = doubtJson.data.doubt;
+            setDoubt(freshDoubt);
+            setCached(detailKey, freshDoubt, 20_000);
+            setErrorMsg(null);
+          }
+        } catch {
+          if (!ignore && !cached) {
+            setErrorMsg("Failed to load doubt details.");
+          }
+        } finally {
+          if (!ignore) {
+            setLoading(false);
+          }
         }
-
-        setDoubt(doubtJson?.data?.doubt || null);
-      } catch {
-        setErrorMsg("Failed to load doubt details.");
-      } finally {
-        setLoading(false);
       }
     }
 
-    if (doubtId) {
-      loadData();
-    }
-  }, [doubtId]);
+    void loadData();
+
+    const unsubscribe = subscribe(detailKey, (updatedData) => {
+      if (updatedData !== undefined) {
+        setDoubt(updatedData as DoubtDetail);
+      } else {
+        void loadData();
+      }
+    });
+
+    return () => {
+      ignore = true;
+      unsubscribe();
+    };
+  }, [detailKey, doubtId]);
 
   const handleSubmitAnswer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,11 +176,18 @@ export default function DoubtDetailPage() {
       setAnswerBody("");
       setSuccessMsg("Answer submitted successfully!");
 
+      // Re-fetch authoritative fresh doubt detail
       const refRes = await fetch(`/api/doubts/${doubtId}`);
       if (refRes.ok) {
         const refJson = await refRes.json();
-        setDoubt(refJson?.data?.doubt || null);
+        if (refJson?.data?.doubt) {
+          setDoubt(refJson.data.doubt);
+          setCached(detailKey, refJson.data.doubt, 20_000);
+        }
       }
+
+      // Invalidate all Home feeds so answer counts update across filters
+      invalidateAllDoubtFeeds();
     } catch {
       setErrorMsg("Failed to submit answer.");
     } finally {
@@ -166,11 +216,18 @@ export default function DoubtDetailPage() {
 
       setSuccessMsg("Answer accepted! Doubt is now resolved.");
 
+      // Re-fetch authoritative fresh doubt detail
       const refRes = await fetch(`/api/doubts/${doubtId}`);
       if (refRes.ok) {
         const refJson = await refRes.json();
-        setDoubt(refJson?.data?.doubt || null);
+        if (refJson?.data?.doubt) {
+          setDoubt(refJson.data.doubt);
+          setCached(detailKey, refJson.data.doubt, 20_000);
+        }
       }
+
+      // Invalidate all Home feeds so resolved status & accepted badge update immediately
+      invalidateAllDoubtFeeds();
     } catch {
       setErrorMsg("Failed to accept answer.");
     } finally {
@@ -193,6 +250,10 @@ export default function DoubtDetailPage() {
         setDeleting(false);
         return;
       }
+
+      // Purge deleted doubt from cache and invalidate all Home feeds
+      invalidateData(detailKey);
+      invalidateAllDoubtFeeds();
 
       router.push("/home");
     } catch {

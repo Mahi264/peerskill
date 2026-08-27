@@ -14,6 +14,7 @@ import {
 
 import { Card } from "@/components/ui/card";
 import { AdminOverviewSkeleton } from "@/components/skeletons/admin-skeletons";
+import { getAdminCached, setAdminCached } from "@/lib/admin-data-cache";
 
 interface StatsType {
   totalStudents: number;
@@ -29,12 +30,19 @@ interface StatsType {
 }
 
 export default function AdminOverviewPage() {
-  const [stats, setStats] = React.useState<StatsType | null>(null);
-  const [loading, setLoading] = React.useState(true);
+  const initialCached = getAdminCached<StatsType>("admin:overview");
+  const [stats, setStats] = React.useState<StatsType | null>(initialCached?.data || null);
+  const [loading, setLoading] = React.useState(!initialCached);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let ignore = false;
+    const current = getAdminCached<StatsType>("admin:overview");
+
+    // If cache is present and fresh, avoid duplicate network fetch
+    if (current && !current.isStale) {
+      return;
+    }
 
     async function loadStats() {
       try {
@@ -45,9 +53,10 @@ export default function AdminOverviewPage() {
         const json = await res.json();
         if (!ignore && json?.data?.stats) {
           setStats(json.data.stats);
+          setAdminCached("admin:overview", json.data.stats, 30_000);
         }
       } catch (err: unknown) {
-        if (!ignore) {
+        if (!ignore && !stats) {
           setError((err as Error).message || "Failed to load overview.");
         }
       } finally {
@@ -60,7 +69,7 @@ export default function AdminOverviewPage() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [stats]);
 
   return (
     <div className="space-y-8">

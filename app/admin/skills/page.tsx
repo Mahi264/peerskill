@@ -14,6 +14,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AdminSkillsSkeleton } from "@/components/skeletons/admin-skeletons";
+import {
+  getAdminCached,
+  invalidateAdminData,
+  setAdminCached,
+} from "@/lib/admin-data-cache";
 
 interface SkillItem {
   id: string;
@@ -26,8 +31,9 @@ interface SkillItem {
 }
 
 export default function AdminSkillsPage() {
-  const [skills, setSkills] = React.useState<SkillItem[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const initialCached = getAdminCached<SkillItem[]>("admin:skills");
+  const [skills, setSkills] = React.useState<SkillItem[]>(initialCached?.data || []);
+  const [loading, setLoading] = React.useState(!initialCached);
   const [searchQuery, setSearchQuery] = React.useState("");
 
   // Create Skill Form State
@@ -51,6 +57,7 @@ export default function AdminSkillsPage() {
       const json = await res.json();
       if (json?.data?.skills) {
         setSkills(json.data.skills);
+        setAdminCached("admin:skills", json.data.skills, 60_000);
       }
     } catch (err) {
       console.error("Fetch skills error:", err);
@@ -61,6 +68,12 @@ export default function AdminSkillsPage() {
 
   React.useEffect(() => {
     let ignore = false;
+    const current = getAdminCached<SkillItem[]>("admin:skills");
+
+    // If cache is fresh, avoid duplicate network fetch
+    if (current && !current.isStale) {
+      return;
+    }
 
     async function load() {
       try {
@@ -69,6 +82,7 @@ export default function AdminSkillsPage() {
         const json = await res.json();
         if (!ignore && json?.data?.skills) {
           setSkills(json.data.skills);
+          setAdminCached("admin:skills", json.data.skills, 60_000);
         }
       } catch (err) {
         console.error("Fetch skills error:", err);
@@ -106,6 +120,10 @@ export default function AdminSkillsPage() {
         throw new Error(json?.error?.message || "Failed to create skill.");
       }
 
+      // Invalidate skills cache & overview cache (since skill count changes)
+      invalidateAdminData("admin:skills");
+      invalidateAdminData("admin:overview");
+
       setNewName("");
       setIsCreating(false);
       await reloadSkills();
@@ -137,6 +155,9 @@ export default function AdminSkillsPage() {
       if (!res.ok) {
         throw new Error(json?.error?.message || "Failed to update skill.");
       }
+
+      // Invalidate skills cache (overview skill count is unchanged by rename)
+      invalidateAdminData("admin:skills");
 
       setEditingSkill(null);
       await reloadSkills();

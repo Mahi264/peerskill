@@ -12,20 +12,40 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AdminSettingsSkeleton } from "@/components/skeletons/admin-skeletons";
+import {
+  getAdminCached,
+  invalidateAdminData,
+  setAdminCached,
+} from "@/lib/admin-data-cache";
+
+interface AdminSettingsCachedData {
+  platformName: string;
+  collegeDisplayName: string;
+  supportEmail: string;
+  allowCustomSkills: boolean;
+}
 
 export default function AdminSettingsPage() {
-  const [platformName, setPlatformName] = React.useState("");
-  const [collegeDisplayName, setCollegeDisplayName] = React.useState("");
-  const [supportEmail, setSupportEmail] = React.useState("");
-  const [allowCustomSkills, setAllowCustomSkills] = React.useState(true);
+  const initialCached = getAdminCached<AdminSettingsCachedData>("admin:settings");
 
-  const [loading, setLoading] = React.useState(true);
+  const [platformName, setPlatformName] = React.useState(initialCached?.data.platformName || "");
+  const [collegeDisplayName, setCollegeDisplayName] = React.useState(initialCached?.data.collegeDisplayName || "");
+  const [supportEmail, setSupportEmail] = React.useState(initialCached?.data.supportEmail || "");
+  const [allowCustomSkills, setAllowCustomSkills] = React.useState(initialCached?.data.allowCustomSkills ?? true);
+
+  const [loading, setLoading] = React.useState(!initialCached);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let ignore = false;
+    const current = getAdminCached<AdminSettingsCachedData>("admin:settings");
+
+    // If cache is fresh, avoid duplicate network fetch
+    if (current && !current.isStale) {
+      return;
+    }
 
     async function loadSettings() {
       try {
@@ -38,9 +58,10 @@ export default function AdminSettingsPage() {
           setCollegeDisplayName(s.collegeDisplayName);
           setSupportEmail(s.supportEmail);
           setAllowCustomSkills(s.allowCustomSkills);
+          setAdminCached("admin:settings", s, 120_000);
         }
       } catch (err: unknown) {
-        if (!ignore) setError((err as Error).message);
+        if (!ignore && !initialCached) setError((err as Error).message);
       } finally {
         if (!ignore) setLoading(false);
       }
@@ -51,7 +72,7 @@ export default function AdminSettingsPage() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [initialCached]);
 
   async function handleSaveSettings(e: React.FormEvent) {
     e.preventDefault();
@@ -61,22 +82,28 @@ export default function AdminSettingsPage() {
     setError(null);
     setSuccessMessage(null);
 
+    const updatedSettings: AdminSettingsCachedData = {
+      platformName: platformName.trim(),
+      collegeDisplayName: collegeDisplayName.trim(),
+      supportEmail: supportEmail.trim(),
+      allowCustomSkills,
+    };
+
     try {
       const res = await fetch("/api/admin/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          platformName: platformName.trim(),
-          collegeDisplayName: collegeDisplayName.trim(),
-          supportEmail: supportEmail.trim(),
-          allowCustomSkills,
-        }),
+        body: JSON.stringify(updatedSettings),
       });
 
       const json = await res.json();
       if (!res.ok) {
         throw new Error(json?.error?.message || "Failed to update settings.");
       }
+
+      // Invalidate and refresh cache with authoritative saved settings
+      invalidateAdminData("admin:settings");
+      setAdminCached("admin:settings", updatedSettings, 120_000);
 
       setSuccessMessage("Platform settings saved successfully.");
       setTimeout(() => setSuccessMessage(null), 4000);

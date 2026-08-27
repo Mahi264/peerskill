@@ -18,6 +18,10 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AdminStudentsSkeleton } from "@/components/skeletons/admin-skeletons";
+import {
+  getAdminCached,
+  setAdminCached,
+} from "@/lib/admin-data-cache";
 
 interface StudentItem {
   id: string;
@@ -33,15 +37,26 @@ interface StudentItem {
   createdAt: string;
 }
 
+interface AdminStudentsCachedData {
+  students: StudentItem[];
+  totalPages: number;
+  totalStudents: number;
+}
+
 export default function AdminStudentsPage() {
-  const [students, setStudents] = React.useState<StudentItem[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const initialKey = "admin:students:::ALL:1:20";
+  const initialCached = getAdminCached<AdminStudentsCachedData>(initialKey);
+
+  const [students, setStudents] = React.useState<StudentItem[]>(initialCached?.data.students || []);
+  const [loading, setLoading] = React.useState(!initialCached);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [debouncedQuery, setDebouncedQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<string>("ALL");
   const [page, setPage] = React.useState(1);
-  const [totalPages, setTotalPages] = React.useState(1);
-  const [totalStudents, setTotalStudents] = React.useState(0);
+  const [totalPages, setTotalPages] = React.useState(initialCached?.data.totalPages || 1);
+  const [totalStudents, setTotalStudents] = React.useState(initialCached?.data.totalStudents || 0);
+
+  const requestIdRef = React.useRef(0);
 
   // Debounce search query
   React.useEffect(() => {
@@ -54,9 +69,28 @@ export default function AdminStudentsPage() {
 
   React.useEffect(() => {
     let ignore = false;
+    const currentReqId = ++requestIdRef.current;
+    const cacheKey = `admin:students:${debouncedQuery}:${statusFilter}:${page}:20`;
 
-    async function fetchStudents() {
-      setLoading(true);
+    async function loadData() {
+      const cached = getAdminCached<AdminStudentsCachedData>(cacheKey);
+
+      if (cached?.data) {
+        if (!ignore && currentReqId === requestIdRef.current) {
+          setStudents(cached.data.students);
+          setTotalPages(cached.data.totalPages);
+          setTotalStudents(cached.data.totalStudents);
+          setLoading(false);
+        }
+        if (!cached.isStale) {
+          return;
+        }
+      } else {
+        if (!ignore && currentReqId === requestIdRef.current) {
+          setLoading(true);
+        }
+      }
+
       try {
         const params = new URLSearchParams();
         if (debouncedQuery) params.set("q", debouncedQuery);
@@ -68,19 +102,27 @@ export default function AdminStudentsPage() {
         if (!res.ok) throw new Error("Failed to load students.");
 
         const json = await res.json();
-        if (!ignore && json?.data) {
-          setStudents(json.data.students);
-          setTotalPages(json.data.pagination.totalPages);
-          setTotalStudents(json.data.pagination.total);
+        if (!ignore && currentReqId === requestIdRef.current && json?.data) {
+          const data: AdminStudentsCachedData = {
+            students: json.data.students,
+            totalPages: json.data.pagination.totalPages,
+            totalStudents: json.data.pagination.total,
+          };
+          setStudents(data.students);
+          setTotalPages(data.totalPages);
+          setTotalStudents(data.totalStudents);
+          setAdminCached(cacheKey, data, 30_000);
         }
       } catch (err) {
         console.error("Fetch students error:", err);
       } finally {
-        if (!ignore) setLoading(false);
+        if (!ignore && currentReqId === requestIdRef.current) {
+          setLoading(false);
+        }
       }
     }
 
-    fetchStudents();
+    loadData();
 
     return () => {
       ignore = true;

@@ -15,31 +15,81 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FormattedConversationItem } from "@/lib/validations/message";
 import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
+import {
+  CACHE_KEYS,
+  getCached,
+  setCached,
+  subscribe,
+} from "@/lib/data-cache";
 
 export default function MessagesInboxPage() {
   const { user } = useStudentAuth();
-  const [loading, setLoading] = React.useState(true);
-  const [conversations, setConversations] = React.useState<FormattedConversationItem[]>([]);
+
+  // Synchronously initialize with cached data to eliminate skeleton flash
+  const cachedInitial = getCached<FormattedConversationItem[]>(CACHE_KEYS.INBOX_CONVERSATIONS);
+  const [conversations, setConversations] = React.useState<FormattedConversationItem[]>(
+    cachedInitial ? cachedInitial.data : []
+  );
+  const [loading, setLoading] = React.useState(!cachedInitial);
+
+  const fetchInbox = React.useCallback(async () => {
+    try {
+      const convRes = await fetch("/api/conversations");
+      if (convRes.ok) {
+        const convJson = await convRes.json();
+        if (convJson?.data?.conversations) {
+          setConversations(convJson.data.conversations);
+          setCached(CACHE_KEYS.INBOX_CONVERSATIONS, convJson.data.conversations, 15_000);
+        }
+      }
+    } catch {
+      // Keep state
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   React.useEffect(() => {
+    let ignore = false;
+
     async function load() {
-      try {
-        const convRes = await fetch("/api/conversations");
-        if (convRes.ok) {
-          const convJson = await convRes.json();
-          if (convJson?.data?.conversations) {
-            setConversations(convJson.data.conversations);
+      const cached = getCached<FormattedConversationItem[]>(CACHE_KEYS.INBOX_CONVERSATIONS);
+      if (!cached || cached.isStale) {
+        try {
+          const convRes = await fetch("/api/conversations");
+          if (convRes.ok) {
+            const convJson = await convRes.json();
+            if (!ignore && convJson?.data?.conversations) {
+              setConversations(convJson.data.conversations);
+              setCached(CACHE_KEYS.INBOX_CONVERSATIONS, convJson.data.conversations, 15_000);
+            }
+          }
+        } catch {
+          // Keep state
+        } finally {
+          if (!ignore) {
+            setLoading(false);
           }
         }
-      } catch {
-        // Keep state
-      } finally {
-        setLoading(false);
       }
     }
 
-    load();
-  }, []);
+    void load();
+
+    // Subscribe to cross-route live updates (e.g. sending a message in /messages/[id])
+    const unsubscribe = subscribe(CACHE_KEYS.INBOX_CONVERSATIONS, (updatedData) => {
+      if (updatedData !== undefined) {
+        setConversations(updatedData as FormattedConversationItem[]);
+      } else {
+        void fetchInbox();
+      }
+    });
+
+    return () => {
+      ignore = true;
+      unsubscribe();
+    };
+  }, [fetchInbox]);
 
   function formatMessageTime(isoDate: string): string {
     const date = new Date(isoDate);

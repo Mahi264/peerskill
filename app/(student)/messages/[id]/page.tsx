@@ -22,6 +22,14 @@ import {
   FormattedMessage as MessageType,
 } from "@/lib/validations/message";
 import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
+import {
+  CACHE_KEYS,
+  getCached,
+  setCached,
+  subscribe,
+  updateCachedConversationMessages,
+  updateCachedInboxWithNewMessage,
+} from "@/lib/data-cache";
 
 const POLLING_INTERVAL_MS = 3500;
 
@@ -30,9 +38,21 @@ export default function ConversationDetailPage() {
   const params = useParams();
   const conversationId = params?.id as string;
   useStudentAuth();
-  const [loading, setLoading] = React.useState(true);
-  const [conversation, setConversation] = React.useState<FormattedConversationDetails | null>(null);
-  const [messages, setMessages] = React.useState<MessageType[]>([]);
+
+  const metadataKey = CACHE_KEYS.conversationDetails(conversationId);
+  const messagesKey = CACHE_KEYS.conversationMessages(conversationId);
+
+  // Synchronously initialize with cached data to eliminate skeleton flash
+  const cachedMetadata = getCached<FormattedConversationDetails>(metadataKey);
+  const cachedMessages = getCached<MessageType[]>(messagesKey);
+
+  const [conversation, setConversation] = React.useState<FormattedConversationDetails | null>(
+    cachedMetadata ? cachedMetadata.data : null,
+  );
+  const [messages, setMessages] = React.useState<MessageType[]>(
+    cachedMessages ? cachedMessages.data : [],
+  );
+  const [loading, setLoading] = React.useState(!cachedMetadata && !cachedMessages);
 
   const [inputText, setInputText] = React.useState("");
   const [sending, setSending] = React.useState(false);
@@ -55,53 +75,80 @@ export default function ConversationDetailPage() {
     isScrolledToBottomRef.current = scrollHeight - scrollTop - clientHeight < 60;
   }, []);
 
-  // 1. Initial Load
+  // 1. Initial Load & Hydration
   React.useEffect(() => {
     let ignore = false;
 
     async function load() {
       if (!conversationId) return;
-      setLoading(true);
 
-      try {
-        // Fetch conversation details
-        const convRes = await fetch(`/api/conversations/${conversationId}`);
-        if (!convRes.ok) {
-          router.replace("/messages");
-          return;
-        }
+      const cachedMeta = getCached<FormattedConversationDetails>(metadataKey);
+      const cachedMsgs = getCached<MessageType[]>(messagesKey);
 
-        const convJson = await convRes.json();
-        if (!ignore && convJson?.data?.conversation) {
-          setConversation(convJson.data.conversation);
-        }
+      if (cachedMsgs?.data && cachedMsgs.data.length > 0) {
+        setTimeout(() => scrollToBottom("auto"), 50);
+      }
 
-        // Fetch initial messages
-        const msgRes = await fetch(`/api/conversations/${conversationId}/messages?limit=50`);
-        if (msgRes.ok) {
-          const msgJson = await msgRes.json();
-          if (!ignore && msgJson?.data?.messages) {
-            setMessages(msgJson.data.messages);
-            setTimeout(() => scrollToBottom("auto"), 50);
+      // Fetch conversation metadata if missing or stale
+      if (!cachedMeta || cachedMeta.isStale) {
+        try {
+          const convRes = await fetch(`/api/conversations/${conversationId}`);
+          if (!convRes.ok) {
+            if (!ignore && !cachedMeta) {
+              router.replace("/messages");
+            }
+            return;
+          }
+
+          const convJson = await convRes.json();
+          if (!ignore && convJson?.data?.conversation) {
+            setConversation(convJson.data.conversation);
+            setCached(metadataKey, convJson.data.conversation, 30_000);
+          }
+        } catch {
+          if (!ignore && !cachedMeta) {
+            router.replace("/messages");
+            return;
           }
         }
-      } catch {
-        if (!ignore) {
-          router.replace("/messages");
+      }
+
+      // Fetch initial messages if missing or stale
+      if (!cachedMsgs || cachedMsgs.isStale) {
+        try {
+          const msgRes = await fetch(`/api/conversations/${conversationId}/messages?limit=50`);
+          if (msgRes.ok) {
+            const msgJson = await msgRes.json();
+            if (!ignore && msgJson?.data?.messages) {
+              const merged = updateCachedConversationMessages(conversationId, msgJson.data.messages);
+              setMessages(merged);
+              setTimeout(() => scrollToBottom("auto"), 50);
+            }
+          }
+        } catch {
+          // Tolerate silent network hiccups if cached
         }
-      } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
+      }
+
+      if (!ignore) {
+        setLoading(false);
       }
     }
 
-    load();
+    void load();
+
+    // Subscribe to external updates for this conversation's messages
+    const unsubMessages = subscribe(messagesKey, (updatedMessages) => {
+      if (updatedMessages) {
+        setMessages(updatedMessages as MessageType[]);
+      }
+    });
 
     return () => {
       ignore = true;
+      unsubMessages();
     };
-  }, [conversationId, router, scrollToBottom]);
+  }, [conversationId, metadataKey, messagesKey, router, scrollToBottom]);
 
   // 2. Focus-Aware Real-Time Polling for New Messages
   React.useEffect(() => {
@@ -117,14 +164,23 @@ export default function ConversationDetailPage() {
         if (res.ok && isMounted) {
           const json = await res.json();
           if (json?.data?.messages) {
+            const incoming: MessageType[] = json.data.messages;
             setMessages((prev) => {
-              const incoming: MessageType[] = json.data.messages;
-              if (incoming.length !== prev.length || (incoming.length > 0 && incoming[incoming.length - 1].id !== prev[prev.length - 1]?.id)) {
-                // If user was already at bottom, scroll down after update
+              const hasNew =
+                incoming.length !== prev.length ||
+                (incoming.length > 0 &&
+                  incoming[incoming.length - 1].id !== prev[prev.length - 1]?.id);
+
+              if (hasNew) {
+                const merged = updateCachedConversationMessages(conversationId, incoming);
+                const newest = merged[merged.length - 1];
+                if (newest) {
+                  updateCachedInboxWithNewMessage(conversationId, newest, conversation?.peer);
+                }
                 if (isScrolledToBottomRef.current) {
                   setTimeout(() => scrollToBottom("smooth"), 50);
                 }
-                return incoming;
+                return merged;
               }
               return prev;
             });
@@ -149,7 +205,7 @@ export default function ConversationDetailPage() {
     // Re-sync immediately upon returning to tab focus
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        poll();
+        void poll();
       }
     };
 
@@ -162,7 +218,7 @@ export default function ConversationDetailPage() {
       window.removeEventListener("focus", poll);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [conversationId, scrollToBottom]);
+  }, [conversationId, conversation?.peer, scrollToBottom]);
 
   // 3. Send Message
   async function handleSendMessage(e?: React.FormEvent) {
@@ -188,7 +244,10 @@ export default function ConversationDetailPage() {
       }
 
       if (json?.data?.message) {
-        setMessages((prev) => [...prev, json.data.message]);
+        const newMsg: MessageType = json.data.message;
+        const updated = updateCachedConversationMessages(conversationId, newMsg);
+        updateCachedInboxWithNewMessage(conversationId, newMsg, conversation?.peer);
+        setMessages(updated);
         setInputText("");
         isScrolledToBottomRef.current = true;
         setTimeout(() => scrollToBottom("smooth"), 50);

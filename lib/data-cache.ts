@@ -13,6 +13,11 @@
 
 import * as React from "react";
 import { ViewerConnectionInfo } from "@/lib/validations/connection";
+import {
+  FormattedConversationItem,
+  FormattedMessage,
+  PeerProfileHeader,
+} from "@/lib/validations/message";
 
 export type { ViewerConnectionInfo };
 
@@ -135,6 +140,9 @@ export const CACHE_KEYS = {
   CONNECTIONS_ALL: "connections:all",
   userProfile: (userId: string) => `user:profile:${userId}`,
   peerConnection: (userId: string) => `peer:connection:${userId}`,
+  INBOX_CONVERSATIONS: "inbox:conversations",
+  conversationDetails: (conversationId: string) => `conversation:${conversationId}`,
+  conversationMessages: (conversationId: string) => `conversation:${conversationId}:messages`,
 } as const;
 
 interface CachedPeerProfileWrapper {
@@ -169,6 +177,99 @@ export function updatePeerConnectionRelationship(
 
   // Broadcast relationship update event
   notify(CACHE_KEYS.peerConnection(userId), viewerConnection);
+}
+
+// ---------------------------------------------------------------------------
+// Messaging Inbox & Conversation Synchronization Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Append or merge incoming message(s) to the cached conversation history,
+ * preserving chronological order and preventing duplicates.
+ */
+export function updateCachedConversationMessages(
+  conversationId: string,
+  incoming: FormattedMessage | FormattedMessage[],
+): FormattedMessage[] {
+  const key = CACHE_KEYS.conversationMessages(conversationId);
+  const cached = getCached<FormattedMessage[]>(key);
+  const currentList = cached?.data || [];
+
+  const incomingList = Array.isArray(incoming) ? incoming : [incoming];
+  const map = new Map<string, FormattedMessage>();
+
+  for (const m of currentList) {
+    map.set(m.id, m);
+  }
+  for (const m of incomingList) {
+    map.set(m.id, m);
+  }
+
+  const merged = Array.from(map.values()).sort(
+    (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+  );
+
+  setCached(key, merged, 30_000);
+  return merged;
+}
+
+/**
+ * Update cached inbox preview for a conversation upon sending or receiving a new message.
+ * Moves the conversation to the top of the inbox list and broadcasts to all inbox subscribers.
+ */
+export function updateCachedInboxWithNewMessage(
+  conversationId: string,
+  message: FormattedMessage,
+  peer?: PeerProfileHeader,
+): void {
+  const key = CACHE_KEYS.INBOX_CONVERSATIONS;
+  const cached = getCached<FormattedConversationItem[]>(key);
+
+  const lastMessageSummary = {
+    id: message.id,
+    senderId: message.senderId,
+    body: message.body,
+    createdAt: message.createdAt,
+  };
+
+  if (cached?.data) {
+    const list = [...cached.data];
+    const index = list.findIndex((c) => c.id === conversationId);
+
+    if (index !== -1) {
+      const target = list[index];
+      const updatedItem: FormattedConversationItem = {
+        ...target,
+        lastMessage: lastMessageSummary,
+        updatedAt: message.createdAt,
+      };
+      // Move to top of inbox list
+      list.splice(index, 1);
+      list.unshift(updatedItem);
+    } else if (peer) {
+      const newItem: FormattedConversationItem = {
+        id: conversationId,
+        peer,
+        lastMessage: lastMessageSummary,
+        createdAt: message.createdAt,
+        updatedAt: message.createdAt,
+      };
+      list.unshift(newItem);
+    }
+
+    setCached(key, list, 15_000);
+  } else if (peer) {
+    const list: FormattedConversationItem[] = [
+      {
+        id: conversationId,
+        peer,
+        lastMessage: lastMessageSummary,
+        createdAt: message.createdAt,
+        updatedAt: message.createdAt,
+      },
+    ];
+    setCached(key, list, 15_000);
+  }
 }
 
 // ---------------------------------------------------------------------------

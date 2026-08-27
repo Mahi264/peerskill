@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
+  ArrowUp,
   Lock,
   Send,
   UserCheck,
@@ -386,41 +387,66 @@ export default function ConversationDetailPage() {
       </div>
 
       {/* Message Composer Area */}
-      <div className="border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-3 rounded-b-[var(--radius-md)]">
+      <div className="p-3 bg-[color:var(--color-bg)] border-x border-b border-[color:var(--color-border)]/60 rounded-b-[var(--radius-md)]">
         {peer.isConnected ? (
           <form onSubmit={handleSendMessage} className="space-y-2">
             {sendError && (
-              <div className="p-2 bg-red-50 border border-red-200 text-red-700 text-xs rounded-md">
+              <div className="p-2.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl">
                 {sendError}
               </div>
             )}
 
-            <div className="flex items-end gap-2">
-              <textarea
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={`Message ${peer.fullName}...`}
-                maxLength={2000}
-                rows={2}
-                disabled={sending}
-                className="flex-1 resize-none rounded-lg border border-[color:var(--color-border)] bg-[color:var(--color-bg)] p-2.5 text-sm text-[color:var(--color-text)] placeholder:text-[color:var(--color-text-muted)] focus:outline-none focus:ring-1 focus:ring-[color:var(--color-primary)] focus:border-[color:var(--color-primary)] transition-all"
-              />
+            {/* Unified Chat Input Box */}
+            <div className="rounded-2xl border border-[color:var(--color-border)] bg-[color:var(--color-surface)] transition-colors focus-within:border-[color:var(--color-primary)]/50">
+              {/* Text Input Area */}
+              <div className="p-3.5 pb-2">
+                <textarea
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={`Message ${peer.fullName}...`}
+                  maxLength={2000}
+                  rows={2}
+                  disabled={sending}
+                  className="w-full resize-none border-0 bg-transparent p-0 text-sm text-[color:var(--color-text)] placeholder:text-[color:var(--color-text-muted)] focus:outline-none focus:ring-0 leading-relaxed"
+                />
+              </div>
 
-              <Button
-                type="submit"
-                disabled={!inputText.trim() || sending}
-                size="default"
-                className="h-10 px-4 gap-1.5 shrink-0"
-              >
-                <Send className="size-4" />
-                <span className="hidden sm:inline">Send</span>
-              </Button>
-            </div>
+              {/* Bottom Action Row with Subtle Divider */}
+              <div className="border-t border-[color:var(--color-border)]/40 px-3.5 py-2.5 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-1.5 text-[11px] text-[color:var(--color-text-muted)]">
+                  <span>Enter to send</span>
+                  <span className="opacity-40">•</span>
+                  <span>Shift+Enter for newline</span>
+                </div>
 
-            <div className="flex items-center justify-between text-[11px] text-[color:var(--color-text-muted)] px-1">
-              <span>Enter to send, Shift+Enter for newline</span>
-              <span>{inputText.length} / 2,000</span>
+                <div className="flex items-center gap-3">
+                  {inputText.length > 0 && (
+                    <span className="text-[11px] text-[color:var(--color-text-muted)]">
+                      {inputText.length}/2,000
+                    </span>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={!inputText.trim() || sending}
+                    aria-label="Send message"
+                    title="Send message"
+                    className="relative group shrink-0 h-10 w-20 rounded-full flex items-center justify-center transition-all duration-150 ease-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--color-primary)] focus-visible:ring-offset-1 disabled:opacity-35 disabled:cursor-not-allowed hover:enabled:brightness-105 active:enabled:scale-95"
+                    style={{
+                      background:
+                        "radial-gradient(ellipse at 50% 50%, #145c54 0%, #197268 38%, #289e90 75%, #5eead4 100%)",
+                    }}
+                  >
+                    <ArrowUp
+                      className="size-5 text-white transition-transform duration-150 group-hover:enabled:-translate-y-0.5"
+                      strokeWidth={2.5}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </button>
+                </div>
+              </div>
             </div>
           </form>
         ) : (

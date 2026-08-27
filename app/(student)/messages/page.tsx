@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FormattedConversationItem } from "@/lib/validations/message";
 import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
+import { InboxListSkeleton } from "@/components/skeletons/messaging-skeletons";
 import {
   CACHE_KEYS,
   getCached,
@@ -131,17 +132,7 @@ export default function MessagesInboxPage() {
       </div>
 
       {loading && (
-        <div className="space-y-3">
-          {[1, 2, 3].map((n) => (
-            <Card key={n} className="p-4 sm:p-5 border-[color:var(--color-border)] shadow-xs animate-pulse flex items-start gap-4">
-              <div className="size-10 rounded-full bg-gray-200" />
-              <div className="space-y-2 flex-1">
-                <div className="h-4 bg-gray-200 rounded w-1/4" />
-                <div className="h-3 bg-gray-200 rounded w-1/2" />
-              </div>
-            </Card>
-          ))}
-        </div>
+        <InboxListSkeleton count={4} />
       )}
 
       {/* Conversations List */}

@@ -13,6 +13,7 @@ import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { FormattedContent } from "@/components/ui/formatted-content";
 import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
+import { HomeFeedSkeleton } from "@/components/skeletons/home-feed-skeleton";
 import {
   CACHE_KEYS,
   getCached,
@@ -285,14 +286,7 @@ export default function HomePage() {
 
           {/* Feed Cards Stream */}
           {loadingDoubts ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map((n) => (
-                <Card key={n} className="p-6 space-y-3 animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded w-3/4" />
-                  <div className="h-3 bg-gray-200 rounded w-1/2" />
-                </Card>
-              ))}
-            </div>
+            <HomeFeedSkeleton count={3} />
           ) : doubts.length === 0 ? (
             <Card className="p-8 sm:p-12 text-center space-y-4 border-dashed bg-white border-[color:var(--color-border)] shadow-xs">
               <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-[color:var(--color-surface-muted)] text-[color:var(--color-text-muted)]">

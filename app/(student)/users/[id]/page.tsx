@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
+import { PublicProfileSkeleton } from "@/components/skeletons/public-profile-skeleton";
 
 import {
   CACHE_KEYS,
@@ -309,12 +310,7 @@ export default function CampusPeerProfilePage() {
   }
 
   if (loading) {
-    return (
-      <div className="max-w-4xl mx-auto flex items-center justify-center p-12 text-sm text-[color:var(--color-text-muted)] animate-pulse">
-        <div className="size-6 rounded-full border-2 border-[color:var(--color-primary)] border-t-transparent animate-spin mr-3" />
-        <span>Loading campus peer profile...</span>
-      </div>
-    );
+    return <PublicProfileSkeleton />;
   }
 
   if (error || !peer) {

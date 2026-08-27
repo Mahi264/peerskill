@@ -25,6 +25,10 @@ import { AlertBanner } from "@/components/ui/toast";
 import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
 import { ViewerConnectionInfo } from "@/lib/validations/connection";
 import {
+  KnowledgeSearchSkeleton,
+  PeerSearchSkeleton,
+} from "@/components/skeletons/search-skeletons";
+import {
   CACHE_KEYS,
   getCached,
   setCached,
@@ -612,15 +616,7 @@ function SearchPageContent() {
 
           {/* Loading Skeleton */}
           {loading && doubtQuery.trim() && (
-            <div className="space-y-4">
-              {[1, 2, 3].map((n) => (
-                <Card key={n} className="p-6 space-y-3 animate-pulse border-[color:var(--color-border)]">
-                  <div className="h-4 bg-gray-200 rounded w-1/3" />
-                  <div className="h-5 bg-gray-200 rounded w-3/4" />
-                  <div className="h-3 bg-gray-200 rounded w-full" />
-                </Card>
-              ))}
-            </div>
+            <KnowledgeSearchSkeleton count={3} />
           )}
 
           {/* No Results Fallback */}
@@ -843,20 +839,7 @@ function SearchPageContent() {
 
           {/* Loading Skeleton */}
           {loading && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[1, 2, 3, 4].map((n) => (
-                <Card key={n} className="p-5 space-y-3 animate-pulse border-[color:var(--color-border)]">
-                  <div className="flex items-center gap-3">
-                    <div className="size-10 rounded-full bg-gray-200" />
-                    <div className="space-y-1.5 flex-1">
-                      <div className="h-4 bg-gray-200 rounded w-1/3" />
-                      <div className="h-3 bg-gray-200 rounded w-1/2" />
-                    </div>
-                  </div>
-                  <div className="h-3 bg-gray-200 rounded w-full" />
-                </Card>
-              ))}
-            </div>
+            <PeerSearchSkeleton count={4} />
           )}
 
           {/* No Peers Fallback */}

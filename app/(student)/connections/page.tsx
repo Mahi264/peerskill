@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { AlertBanner } from "@/components/ui/toast";
 import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
+import { ConnectionsListSkeleton } from "@/components/skeletons/connection-skeletons";
 
 import {
   CACHE_KEYS,
@@ -351,19 +352,7 @@ export default function ConnectionsPage() {
       </div>
 
       {loading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[1, 2].map((n) => (
-            <Card key={n} className="p-5 space-y-3 animate-pulse border-[color:var(--color-border)]">
-              <div className="flex items-center gap-3">
-                <div className="size-10 rounded-full bg-gray-200" />
-                <div className="space-y-1.5 flex-1">
-                  <div className="h-4 bg-gray-200 rounded w-1/3" />
-                  <div className="h-3 bg-gray-200 rounded w-1/2" />
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
+        <ConnectionsListSkeleton count={4} />
       )}
 
       {/* Tab 1: Connected Peers */}

@@ -165,6 +165,52 @@
   animation: node-pulse 3s var(--ease-expressive) infinite;
 }
 
+/* Skeleton Shimmer & Content Fade */
+@keyframes shimmer-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--color-surface-muted);
+}
+
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shimmer-sweep 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes content-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-content-fade {
+  animation: content-fade-in var(--duration-normal, 200ms) var(--ease-expressive, cubic-bezier(0.16, 1.0, 0.3, 1.0)) forwards;
+}
+
 /* Accessibility: prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -178,6 +224,11 @@
 
   .press-tactile:active {
     transform: none !important;
+  }
+
+  .skeleton-shimmer::after {
+    animation: none !important;
+    display: none !important;
   }
 
   .animate-checkmark,

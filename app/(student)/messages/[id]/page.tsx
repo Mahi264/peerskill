@@ -23,6 +23,7 @@ import {
   FormattedMessage as MessageType,
 } from "@/lib/validations/message";
 import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
+import { ConversationDetailSkeleton } from "@/components/skeletons/messaging-skeletons";
 import {
   CACHE_KEYS,
   getCached,
@@ -273,12 +274,7 @@ export default function ConversationDetailPage() {
   }
 
   if (loading) {
-    return (
-      <div className="max-w-4xl mx-auto flex items-center justify-center p-12 text-sm text-[color:var(--color-text-muted)] animate-pulse">
-        <div className="size-6 rounded-full border-2 border-[color:var(--color-primary)] border-t-transparent animate-spin mr-3" />
-        <span>Loading conversation...</span>
-      </div>
-    );
+    return <ConversationDetailSkeleton />;
   }
 
   if (!conversation) {

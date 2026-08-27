@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { AlertBanner } from "@/components/ui/toast";
+import { invalidateAllDoubtFeeds } from "@/lib/data-cache";
 
 const SEED_SKILLS = [
   "C++",
@@ -85,6 +86,9 @@ export default function NewDoubtPage() {
         setErrorMsg(json?.error?.message || "Failed to post doubt.");
         return;
       }
+
+      // Invalidate all Home doubt-feed cached variations
+      invalidateAllDoubtFeeds();
 
       const doubtId = json?.data?.doubt?.id;
       if (doubtId) {

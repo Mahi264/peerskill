@@ -13,6 +13,12 @@ import { Select } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { FormattedContent } from "@/components/ui/formatted-content";
 import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
+import {
+  CACHE_KEYS,
+  getCached,
+  setCached,
+  subscribe,
+} from "@/lib/data-cache";
 
 interface Doubt {
   id: string;
@@ -43,43 +49,89 @@ export default function HomePage() {
   const [togglingAvailability, setTogglingAvailability] = React.useState(false);
   const [localAvailable, setLocalAvailable] = React.useState<boolean | null>(null);
 
-  // Doubts Feed State
-  const [doubts, setDoubts] = React.useState<Doubt[]>([]);
-  const [loadingDoubts, setLoadingDoubts] = React.useState(true);
+  // Doubts Feed State & Initial Cache Hydration
   const [filterStatus, setFilterStatus] = React.useState<string>("ALL");
   const [filterUrgency, setFilterUrgency] = React.useState<string>("ALL");
   const [filterSkill, setFilterSkill] = React.useState<string>("ALL");
 
-  // Load Doubts Feed
+  const initialFeedKey = CACHE_KEYS.doubtFeed({
+    status: "ALL",
+    urgency: "ALL",
+    skill: "ALL",
+  });
+  const cachedInitial = getCached<Doubt[]>(initialFeedKey);
+  const [doubts, setDoubts] = React.useState<Doubt[]>(
+    cachedInitial ? cachedInitial.data : [],
+  );
+  const [loadingDoubts, setLoadingDoubts] = React.useState(!cachedInitial);
+
+  const requestIdRef = React.useRef(0);
+
+  // Load Doubts Feed with Caching, Filter Isolation & Race Safety
   React.useEffect(() => {
     let ignore = false;
+    const currentReqId = ++requestIdRef.current;
+
+    const feedKey = CACHE_KEYS.doubtFeed({
+      status: filterStatus,
+      urgency: filterUrgency,
+      skill: filterSkill,
+    });
 
     async function loadDoubts() {
       if (!user || user.status !== "ACTIVE") return;
-      try {
-        const params = new URLSearchParams();
-        if (filterStatus !== "ALL") params.set("status", filterStatus);
-        if (filterUrgency !== "ALL") params.set("urgency", filterUrgency);
-        if (filterSkill !== "ALL") params.set("skill", filterSkill);
 
-        const res = await fetch(`/api/doubts?${params.toString()}`);
-        if (res.ok && !ignore) {
-          const json = await res.json();
-          setDoubts(json?.data?.doubts || []);
-        }
-      } catch {
-        // Keep existing feed state on error
-      } finally {
-        if (!ignore) {
+      const cached = getCached<Doubt[]>(feedKey);
+      if (cached?.data) {
+        if (!ignore && currentReqId === requestIdRef.current) {
+          setDoubts(cached.data);
           setLoadingDoubts(false);
+        }
+      } else {
+        if (!ignore && currentReqId === requestIdRef.current) {
+          setDoubts([]);
+          setLoadingDoubts(true);
+        }
+      }
+
+      if (!cached || cached.isStale) {
+        try {
+          const params = new URLSearchParams();
+          if (filterStatus !== "ALL") params.set("status", filterStatus);
+          if (filterUrgency !== "ALL") params.set("urgency", filterUrgency);
+          if (filterSkill !== "ALL") params.set("skill", filterSkill);
+
+          const res = await fetch(`/api/doubts?${params.toString()}`);
+          if (res.ok && !ignore && currentReqId === requestIdRef.current) {
+            const json = await res.json();
+            const fetchedDoubts: Doubt[] = json?.data?.doubts || [];
+            setDoubts(fetchedDoubts);
+            setCached(feedKey, fetchedDoubts, 30_000);
+          }
+        } catch {
+          // Keep existing feed state on network error
+        } finally {
+          if (!ignore && currentReqId === requestIdRef.current) {
+            setLoadingDoubts(false);
+          }
         }
       }
     }
 
-    loadDoubts();
+    void loadDoubts();
+
+    // Subscribe to feed invalidations or live updates for this filter permutation
+    const unsubscribe = subscribe(feedKey, (updatedData) => {
+      if (updatedData !== undefined) {
+        setDoubts(updatedData as Doubt[]);
+      } else {
+        void loadDoubts();
+      }
+    });
 
     return () => {
       ignore = true;
+      unsubscribe();
     };
   }, [user, filterStatus, filterUrgency, filterSkill]);
 

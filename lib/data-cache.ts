@@ -143,6 +143,13 @@ export const CACHE_KEYS = {
   INBOX_CONVERSATIONS: "inbox:conversations",
   conversationDetails: (conversationId: string) => `conversation:${conversationId}`,
   conversationMessages: (conversationId: string) => `conversation:${conversationId}:messages`,
+  DOUBT_FEEDS_PREFIX: "home:doubts",
+  doubtFeed: (filters?: { status?: string; urgency?: string; skill?: string }) => {
+    const status = filters?.status && filters.status !== "ALL" ? filters.status : "ALL";
+    const urgency = filters?.urgency && filters.urgency !== "ALL" ? filters.urgency : "ALL";
+    const skill = filters?.skill && filters.skill !== "ALL" ? filters.skill.trim().toLowerCase() : "ALL";
+    return `home:doubts:status=${status}&urgency=${urgency}&skill=${skill}`;
+  },
 } as const;
 
 interface CachedPeerProfileWrapper {
@@ -270,6 +277,18 @@ export function updateCachedInboxWithNewMessage(
     ];
     setCached(key, list, 15_000);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Home Doubt Feed Synchronization Helpers (Stage 3A)
+// ---------------------------------------------------------------------------
+
+/**
+ * Invalidate all cached Home doubt-feed filter variations.
+ * Invoked when creating a doubt, answering, resolving, or deleting doubts.
+ */
+export function invalidateAllDoubtFeeds(): void {
+  invalidateData(CACHE_KEYS.DOUBT_FEEDS_PREFIX);
 }
 
 // ---------------------------------------------------------------------------

@@ -16,6 +16,7 @@ import {
 
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { Button } from "@/components/ui/button";
+import { clearAdminCache } from "@/lib/admin-data-cache";
 import { cn } from "@/lib/utils";
 
 export interface AdminShellProps {
@@ -83,6 +84,7 @@ export function AdminShell({ children, initialAdmin }: AdminShellProps) {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
     } finally {
+      clearAdminCache();
       router.push("/");
     }
   }

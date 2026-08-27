@@ -14,6 +14,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AdminOwnershipSkeleton } from "@/components/skeletons/admin-skeletons";
+import {
+  clearAdminCache,
+  getAdminCached,
+  setAdminCached,
+} from "@/lib/admin-data-cache";
 
 interface AdminInfo {
   id: string;
@@ -31,10 +36,21 @@ interface AuditLogItem {
   createdAt: string;
 }
 
+interface AdminOwnershipCachedData {
+  currentAdmin: AdminInfo | null;
+  auditHistory: AuditLogItem[];
+}
+
 export default function AdminOwnershipPage() {
-  const [currentAdmin, setCurrentAdmin] = React.useState<AdminInfo | null>(null);
-  const [auditHistory, setAuditHistory] = React.useState<AuditLogItem[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const initialCached = getAdminCached<AdminOwnershipCachedData>("admin:ownership");
+
+  const [currentAdmin, setCurrentAdmin] = React.useState<AdminInfo | null>(
+    initialCached?.data.currentAdmin || null,
+  );
+  const [auditHistory, setAuditHistory] = React.useState<AuditLogItem[]>(
+    initialCached?.data.auditHistory || [],
+  );
+  const [loading, setLoading] = React.useState(!initialCached);
 
   // Transfer Form State
   const [targetEmail, setTargetEmail] = React.useState("");
@@ -43,22 +59,37 @@ export default function AdminOwnershipPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = React.useState(false);
 
+  const requestIdRef = React.useRef(0);
+
   React.useEffect(() => {
     let ignore = false;
+    const currentReqId = ++requestIdRef.current;
+    const current = getAdminCached<AdminOwnershipCachedData>("admin:ownership");
+
+    if (current && !current.isStale) {
+      return;
+    }
 
     async function loadOwnership() {
       try {
         const res = await fetch("/api/admin/ownership");
         if (!res.ok) throw new Error("Failed to load ownership information.");
         const json = await res.json();
-        if (!ignore && json?.data) {
-          setCurrentAdmin(json.data.currentAdmin);
-          setAuditHistory(json.data.auditHistory || []);
+        if (!ignore && currentReqId === requestIdRef.current && json?.data) {
+          const payload: AdminOwnershipCachedData = {
+            currentAdmin: json.data.currentAdmin,
+            auditHistory: json.data.auditHistory || [],
+          };
+          setCurrentAdmin(payload.currentAdmin);
+          setAuditHistory(payload.auditHistory);
+          setAdminCached("admin:ownership", payload, 15_000);
         }
       } catch (err: unknown) {
         console.error("Ownership load error:", err);
       } finally {
-        if (!ignore) setLoading(false);
+        if (!ignore && currentReqId === requestIdRef.current) {
+          setLoading(false);
+        }
       }
     }
 
@@ -67,7 +98,7 @@ export default function AdminOwnershipPage() {
     return () => {
       ignore = true;
     };
-  }, []);
+  }, [initialCached]);
 
   async function executeTransfer() {
     if (!targetEmail.trim() || submitting) return;
@@ -88,6 +119,9 @@ export default function AdminOwnershipPage() {
       if (!res.ok) {
         throw new Error(json?.error?.message || "Failed to transfer ownership.");
       }
+
+      // Purge volatile Admin cache on successful transfer before navigation
+      clearAdminCache();
 
       // Successful transfer immediately logs out current administrator
       alert(json?.data?.message || "Ownership transferred successfully. You are now logged out.");

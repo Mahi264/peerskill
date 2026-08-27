@@ -22,6 +22,7 @@ import {
   subscribe,
   invalidateData,
   invalidateAllDoubtFeeds,
+  invalidateSearchKnowledge,
 } from "@/lib/data-cache";
 
 interface Author {
@@ -186,8 +187,9 @@ export default function DoubtDetailPage() {
         }
       }
 
-      // Invalidate all Home feeds so answer counts update across filters
+      // Invalidate all Home feeds and Knowledge search so answer counts update across filters
       invalidateAllDoubtFeeds();
+      invalidateSearchKnowledge();
     } catch {
       setErrorMsg("Failed to submit answer.");
     } finally {
@@ -226,8 +228,9 @@ export default function DoubtDetailPage() {
         }
       }
 
-      // Invalidate all Home feeds so resolved status & accepted badge update immediately
+      // Invalidate all Home feeds and Knowledge search so resolved status & accepted badge update immediately
       invalidateAllDoubtFeeds();
+      invalidateSearchKnowledge();
     } catch {
       setErrorMsg("Failed to accept answer.");
     } finally {
@@ -251,9 +254,10 @@ export default function DoubtDetailPage() {
         return;
       }
 
-      // Purge deleted doubt from cache and invalidate all Home feeds
+      // Purge deleted doubt from cache and invalidate all Home feeds & Knowledge search
       invalidateData(detailKey);
       invalidateAllDoubtFeeds();
+      invalidateSearchKnowledge();
 
       router.push("/home");
     } catch {

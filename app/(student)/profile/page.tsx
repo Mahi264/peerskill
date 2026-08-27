@@ -18,6 +18,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { AlertBanner } from "@/components/ui/toast";
 import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
+import { invalidateSearchPeers } from "@/lib/data-cache";
 
 const SEED_SKILLS = [
   "C++",
@@ -127,6 +128,7 @@ export default function ProfilePage() {
       }
 
       await refreshAuth();
+      invalidateSearchPeers();
       setSuccessMsg("Academic profile updated successfully.");
     } catch {
       setErrorMsg("Network error while saving.");
@@ -187,6 +189,7 @@ export default function ProfilePage() {
       }
 
       await refreshAuth();
+      invalidateSearchPeers();
       setSuccessMsg("Skills and proficiencies saved successfully.");
     } catch {
       setErrorMsg("Network error while saving skills.");
@@ -222,6 +225,7 @@ export default function ProfilePage() {
       });
 
       await refreshAuth();
+      invalidateSearchPeers();
       setSuccessMsg("Privacy and availability settings saved successfully.");
     } catch {
       setErrorMsg("Network error while saving privacy settings.");

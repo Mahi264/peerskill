@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { AlertBanner } from "@/components/ui/toast";
-import { invalidateAllDoubtFeeds } from "@/lib/data-cache";
+import { invalidateAllDoubtFeeds, invalidateSearchKnowledge } from "@/lib/data-cache";
 
 const SEED_SKILLS = [
   "C++",
@@ -87,8 +87,9 @@ export default function NewDoubtPage() {
         return;
       }
 
-      // Invalidate all Home doubt-feed cached variations
+      // Invalidate all Home doubt-feed cached variations and Knowledge search
       invalidateAllDoubtFeeds();
+      invalidateSearchKnowledge();
 
       const doubtId = json?.data?.doubt?.id;
       if (doubtId) {

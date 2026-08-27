@@ -24,7 +24,12 @@ import { Switch } from "@/components/ui/switch";
 import { AlertBanner } from "@/components/ui/toast";
 import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
 import { ViewerConnectionInfo } from "@/lib/validations/connection";
-import { subscribe } from "@/lib/data-cache";
+import {
+  CACHE_KEYS,
+  getCached,
+  setCached,
+  subscribe,
+} from "@/lib/data-cache";
 
 interface SearchDoubt {
   id: string;
@@ -84,6 +89,16 @@ interface Pagination {
   totalPages: number;
 }
 
+interface CachedKnowledgeData {
+  doubts: SearchDoubt[];
+  pagination: Pagination;
+}
+
+interface CachedPeersData {
+  peers: SearchPeer[];
+  pagination: Pagination;
+}
+
 function SearchPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -104,26 +119,62 @@ function SearchPageContent() {
 
   const currentPage = Number.parseInt(searchParams.get("page") || "1", 10);
 
-  const [loading, setLoading] = React.useState(false);
+  // Deterministic Cache Keys
+  const currentKnowledgeKey = CACHE_KEYS.searchKnowledge({
+    q: doubtQuery,
+    status: filterStatus,
+    urgency: filterUrgency,
+    skillId: filterSkill,
+    page: currentPage,
+  });
+
+  const currentPeersKey = CACHE_KEYS.searchPeers({
+    q: peerQuery,
+    available: filterAvailable,
+    level: filterLevel,
+    skill: filterSkill,
+    page: currentPage,
+  });
+
+  // Synchronous Render 0 Hydration
+  const cachedKnowledge = doubtQuery.trim()
+    ? getCached<CachedKnowledgeData>(currentKnowledgeKey)
+    : null;
+  const cachedPeers = getCached<CachedPeersData>(currentPeersKey);
+
+  const initialDoubtResults = cachedKnowledge?.data?.doubts || [];
+  const initialDoubtPagination = cachedKnowledge?.data?.pagination || {
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 1,
+  };
+
+  const initialPeerResults = cachedPeers?.data?.peers || [];
+  const initialPeerPagination = cachedPeers?.data?.pagination || {
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 1,
+  };
+
+  const initialLoading =
+    currentTab === "doubts"
+      ? Boolean(doubtQuery.trim() && !cachedKnowledge)
+      : !cachedPeers;
+
+  const [loading, setLoading] = React.useState(initialLoading);
   const [error, setError] = React.useState<string | null>(null);
 
   // Doubts state
-  const [doubtResults, setDoubtResults] = React.useState<SearchDoubt[]>([]);
-  const [doubtPagination, setDoubtPagination] = React.useState<Pagination>({
-    page: 1,
-    limit: 10,
-    total: 0,
-    totalPages: 1,
-  });
+  const [doubtResults, setDoubtResults] = React.useState<SearchDoubt[]>(initialDoubtResults);
+  const [doubtPagination, setDoubtPagination] = React.useState<Pagination>(initialDoubtPagination);
 
   // Peers state
-  const [peerResults, setPeerResults] = React.useState<SearchPeer[]>([]);
-  const [peerPagination, setPeerPagination] = React.useState<Pagination>({
-    page: 1,
-    limit: 10,
-    total: 0,
-    totalPages: 1,
-  });
+  const [peerResults, setPeerResults] = React.useState<SearchPeer[]>(initialPeerResults);
+  const [peerPagination, setPeerPagination] = React.useState<Pagination>(initialPeerPagination);
+
+  const requestIdRef = React.useRef(0);
 
   const updateFilters = React.useCallback(
     (newParams: Record<string, string | null>) => {
@@ -173,95 +224,179 @@ function SearchPageContent() {
     }
   };
 
-  // Run Search Effect
+  // Run Search Effect with Caching, Stale-While-Revalidate, Race Safety & Subscriptions
   React.useEffect(() => {
     let ignore = false;
+    const currentReqId = ++requestIdRef.current;
 
-    async function runSearch() {
-      if (currentTab === "doubts") {
-        if (!doubtQuery.trim()) {
-          if (!ignore) {
-            setDoubtResults([]);
-            setDoubtPagination({ page: 1, limit: 10, total: 0, totalPages: 1 });
-            setLoading(false);
-          }
-          return;
+    if (currentTab === "doubts") {
+      if (!doubtQuery.trim()) {
+        if (!ignore && currentReqId === requestIdRef.current) {
+          setDoubtResults([]);
+          setDoubtPagination({ page: 1, limit: 10, total: 0, totalPages: 1 });
+          setLoading(false);
+          setError(null);
         }
+        return;
+      }
 
-        setLoading(true);
-        setError(null);
-
-        try {
-          const params = new URLSearchParams();
-          params.set("q", doubtQuery.trim());
-          if (filterStatus !== "ALL") params.set("status", filterStatus);
-          if (filterUrgency !== "ALL") params.set("urgency", filterUrgency);
-          if (filterSkill) params.set("skillId", filterSkill);
-          if (currentPage > 1) params.set("page", currentPage.toString());
-
-          const res = await fetch(`/api/search/knowledge?${params.toString()}`);
-          if (!res.ok) {
-            throw new Error("Failed to load knowledge search results.");
-          }
-
-          const json = await res.json();
-          if (!ignore) {
-            setDoubtResults(json.data.doubts || []);
-            setDoubtPagination(
-              json.data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 },
-            );
-          }
-        } catch {
-          if (!ignore) {
-            setError("Unable to search campus knowledge right now. Please try again.");
-          }
-        } finally {
-          if (!ignore) {
-            setLoading(false);
-          }
+      const cached = getCached<CachedKnowledgeData>(currentKnowledgeKey);
+      if (cached?.data) {
+        if (!ignore && currentReqId === requestIdRef.current) {
+          setDoubtResults(cached.data.doubts || []);
+          setDoubtPagination(
+            cached.data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 },
+          );
+          setLoading(false);
         }
       } else {
-        // Peers search
-        setLoading(true);
-        setError(null);
+        if (!ignore && currentReqId === requestIdRef.current) {
+          setDoubtResults([]);
+          setLoading(true);
+        }
+      }
 
-        try {
-          const params = new URLSearchParams();
-          if (peerQuery.trim()) params.set("q", peerQuery.trim());
-          if (filterAvailable) params.set("available", "true");
-          if (filterLevel !== "ALL") params.set("level", filterLevel);
-          if (filterSkill) params.set("skill", filterSkill);
-          if (currentPage > 1) params.set("page", currentPage.toString());
+      async function runKnowledgeSearch() {
+        if (!cached || cached.isStale) {
+          try {
+            const params = new URLSearchParams();
+            params.set("q", doubtQuery.trim());
+            if (filterStatus !== "ALL") params.set("status", filterStatus);
+            if (filterUrgency !== "ALL") params.set("urgency", filterUrgency);
+            if (filterSkill) params.set("skillId", filterSkill);
+            if (currentPage > 1) params.set("page", currentPage.toString());
 
-          const res = await fetch(`/api/search/peers?${params.toString()}`);
-          if (!res.ok) {
-            throw new Error("Failed to load campus peers.");
-          }
+            const res = await fetch(`/api/search/knowledge?${params.toString()}`);
+            if (!res.ok) {
+              throw new Error("Failed to load knowledge search results.");
+            }
 
-          const json = await res.json();
-          if (!ignore) {
-            setPeerResults(json.data.peers || []);
-            setPeerPagination(
-              json.data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 },
-            );
-          }
-        } catch {
-          if (!ignore) {
-            setError("Unable to search campus peers right now. Please try again.");
-          }
-        } finally {
-          if (!ignore) {
-            setLoading(false);
+            const json = await res.json();
+            if (!ignore && currentReqId === requestIdRef.current) {
+              const freshDoubts: SearchDoubt[] = json.data?.doubts || [];
+              const freshPagination: Pagination =
+                json.data?.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 };
+              setDoubtResults(freshDoubts);
+              setDoubtPagination(freshPagination);
+              setCached(
+                currentKnowledgeKey,
+                { doubts: freshDoubts, pagination: freshPagination },
+                30_000,
+              );
+              setError(null);
+            }
+          } catch {
+            if (!ignore && currentReqId === requestIdRef.current && !cached?.data) {
+              setError("Unable to search campus knowledge right now. Please try again.");
+            }
+          } finally {
+            if (!ignore && currentReqId === requestIdRef.current) {
+              setLoading(false);
+            }
           }
         }
       }
+
+      void runKnowledgeSearch();
+
+      const unsubscribe = subscribe(currentKnowledgeKey, (updatedData) => {
+        if (updatedData !== undefined) {
+          const payload = updatedData as CachedKnowledgeData;
+          if (!ignore && currentReqId === requestIdRef.current) {
+            setDoubtResults(payload?.doubts || []);
+            setDoubtPagination(
+              payload?.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 },
+            );
+          }
+        } else {
+          void runKnowledgeSearch();
+        }
+      });
+
+      return () => {
+        ignore = true;
+        unsubscribe();
+      };
+    } else {
+      // Peers search
+      const cached = getCached<CachedPeersData>(currentPeersKey);
+      if (cached?.data) {
+        if (!ignore && currentReqId === requestIdRef.current) {
+          setPeerResults(cached.data.peers || []);
+          setPeerPagination(
+            cached.data.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 },
+          );
+          setLoading(false);
+        }
+      } else {
+        if (!ignore && currentReqId === requestIdRef.current) {
+          setPeerResults([]);
+          setLoading(true);
+        }
+      }
+
+      async function runPeersSearch() {
+        if (!cached || cached.isStale) {
+          try {
+            const params = new URLSearchParams();
+            if (peerQuery.trim()) params.set("q", peerQuery.trim());
+            if (filterAvailable) params.set("available", "true");
+            if (filterLevel !== "ALL") params.set("level", filterLevel);
+            if (filterSkill) params.set("skill", filterSkill);
+            if (currentPage > 1) params.set("page", currentPage.toString());
+
+            const res = await fetch(`/api/search/peers?${params.toString()}`);
+            if (!res.ok) {
+              throw new Error("Failed to load campus peers.");
+            }
+
+            const json = await res.json();
+            if (!ignore && currentReqId === requestIdRef.current) {
+              const freshPeers: SearchPeer[] = json.data?.peers || [];
+              const freshPagination: Pagination =
+                json.data?.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 };
+              setPeerResults(freshPeers);
+              setPeerPagination(freshPagination);
+              setCached(
+                currentPeersKey,
+                { peers: freshPeers, pagination: freshPagination },
+                30_000,
+              );
+              setError(null);
+            }
+          } catch {
+            if (!ignore && currentReqId === requestIdRef.current && !cached?.data) {
+              setError("Unable to search campus peers right now. Please try again.");
+            }
+          } finally {
+            if (!ignore && currentReqId === requestIdRef.current) {
+              setLoading(false);
+            }
+          }
+        }
+      }
+
+      void runPeersSearch();
+
+      const unsubscribe = subscribe(currentPeersKey, (updatedData) => {
+        if (updatedData !== undefined) {
+          const payload = updatedData as CachedPeersData;
+          if (!ignore && currentReqId === requestIdRef.current) {
+            setPeerResults(payload?.peers || []);
+            setPeerPagination(
+              payload?.pagination || { page: 1, limit: 10, total: 0, totalPages: 1 },
+            );
+          }
+        } else {
+          void runPeersSearch();
+        }
+      });
+
+      return () => {
+        ignore = true;
+        unsubscribe();
+      };
     }
-
-    runSearch();
-
-    return () => {
-      ignore = true;
-    };
   }, [
     currentTab,
     doubtQuery,
@@ -272,6 +407,8 @@ function SearchPageContent() {
     filterAvailable,
     filterLevel,
     currentPage,
+    currentKnowledgeKey,
+    currentPeersKey,
   ]);
 
   // Synchronize peer relationship status live from external connection mutations

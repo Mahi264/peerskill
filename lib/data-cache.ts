@@ -151,6 +151,36 @@ export const CACHE_KEYS = {
     return `home:doubts:status=${status}&urgency=${urgency}&skill=${skill}`;
   },
   doubtDetail: (doubtId: string) => `doubt:${doubtId}`,
+  SEARCH_KNOWLEDGE_PREFIX: "search:knowledge",
+  searchKnowledge: (params?: {
+    q?: string;
+    status?: string;
+    urgency?: string;
+    skillId?: string;
+    page?: number | string;
+  }) => {
+    const q = params?.q ? params.q.trim() : "";
+    const status = params?.status && params.status !== "ALL" ? params.status : "ALL";
+    const urgency = params?.urgency && params.urgency !== "ALL" ? params.urgency : "ALL";
+    const skillId = params?.skillId ? params.skillId.trim() : "";
+    const page = params?.page ? String(params.page) : "1";
+    return `search:knowledge:q=${q}&status=${status}&urgency=${urgency}&skillId=${skillId}&page=${page}`;
+  },
+  SEARCH_PEERS_PREFIX: "search:peers",
+  searchPeers: (params?: {
+    q?: string;
+    skill?: string;
+    available?: boolean | string;
+    level?: string;
+    page?: number | string;
+  }) => {
+    const q = params?.q ? params.q.trim() : "";
+    const skill = params?.skill ? params.skill.trim().toLowerCase() : "";
+    const available = params?.available === true || params?.available === "true" ? "true" : "";
+    const level = params?.level && params.level !== "ALL" ? params.level : "ALL";
+    const page = params?.page ? String(params.page) : "1";
+    return `search:peers:q=${q}&skill=${skill}&available=${available}&level=${level}&page=${page}`;
+  },
 } as const;
 
 interface CachedPeerProfileWrapper {
@@ -304,6 +334,26 @@ export function updateCachedDoubtDetail<T>(doubtId: string, data: T): void {
  */
 export function invalidateDoubtDetail(doubtId: string): void {
   invalidateData(CACHE_KEYS.doubtDetail(doubtId));
+}
+
+// ---------------------------------------------------------------------------
+// Search Synchronization Helpers (Stage 4)
+// ---------------------------------------------------------------------------
+
+/**
+ * Invalidate all cached Knowledge Search results.
+ * Invoked when creating a doubt, deleting a doubt, submitting an answer, or accepting an answer.
+ */
+export function invalidateSearchKnowledge(): void {
+  invalidateData(CACHE_KEYS.SEARCH_KNOWLEDGE_PREFIX);
+}
+
+/**
+ * Invalidate all cached Peer Search results.
+ * Invoked when student profile or skills change.
+ */
+export function invalidateSearchPeers(): void {
+  invalidateData(CACHE_KEYS.SEARCH_PEERS_PREFIX);
 }
 
 // ---------------------------------------------------------------------------

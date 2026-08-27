@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
+import { AdminOverviewSkeleton } from "@/components/skeletons/admin-skeletons";
 
 interface StatsType {
   totalStudents: number;
@@ -80,14 +81,7 @@ export default function AdminOverviewPage() {
         )}
 
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-32 rounded-xl bg-[color:var(--color-surface)] border border-[color:var(--color-border)] animate-pulse"
-              />
-            ))}
-          </div>
+          <AdminOverviewSkeleton />
         ) : stats ? (
           <div className="space-y-8">
             {/* Student Engagement */}

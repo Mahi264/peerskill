@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { AdminSkillsSkeleton } from "@/components/skeletons/admin-skeletons";
 
 interface SkillItem {
   id: string;
@@ -247,14 +248,7 @@ export default function AdminSkillsPage() {
 
         {/* Skills Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-28 rounded-xl bg-[color:var(--color-surface)] border border-[color:var(--color-border)] animate-pulse"
-              />
-            ))}
-          </div>
+          <AdminSkillsSkeleton count={6} />
         ) : filteredSkills.length === 0 ? (
           <Card className="p-12 text-center">
             <Tag className="size-12 text-[color:var(--color-text-muted)] mx-auto mb-3 opacity-60" />

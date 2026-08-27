@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { AdminOwnershipSkeleton } from "@/components/skeletons/admin-skeletons";
 
 interface AdminInfo {
   id: string;
@@ -114,7 +115,7 @@ export default function AdminOwnershipPage() {
 
         {/* Current Active Administrator Card */}
         {loading ? (
-          <Card className="p-6 h-32 animate-pulse" />
+          <AdminOwnershipSkeleton />
         ) : (
           <Card className="p-6 border-l-4 border-l-emerald-500 space-y-3">
             <div className="flex items-center justify-between">

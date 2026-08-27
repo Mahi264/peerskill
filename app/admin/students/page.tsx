@@ -17,6 +17,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { AdminStudentsSkeleton } from "@/components/skeletons/admin-skeletons";
 
 interface StudentItem {
   id: string;
@@ -140,14 +141,7 @@ export default function AdminStudentsPage() {
 
         {/* Students Table / List */}
         {loading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-20 rounded-xl bg-[color:var(--color-surface)] border border-[color:var(--color-border)] animate-pulse"
-              />
-            ))}
-          </div>
+          <AdminStudentsSkeleton count={5} />
         ) : students.length === 0 ? (
           <Card className="p-12 text-center">
             <Users className="size-12 text-[color:var(--color-text-muted)] mx-auto mb-3 opacity-60" />

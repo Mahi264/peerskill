@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { AdminSettingsSkeleton } from "@/components/skeletons/admin-skeletons";
 
 export default function AdminSettingsPage() {
   const [platformName, setPlatformName] = React.useState("");
@@ -125,7 +126,7 @@ export default function AdminSettingsPage() {
         )}
 
         {loading ? (
-          <Card className="p-6 h-64 animate-pulse" />
+          <AdminSettingsSkeleton />
         ) : (
           <Card className="p-6">
             <form onSubmit={handleSaveSettings} className="space-y-5">

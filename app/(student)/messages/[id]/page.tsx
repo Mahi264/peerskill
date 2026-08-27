@@ -35,6 +35,9 @@ import {
 
 const POLLING_INTERVAL_MS = 3500;
 
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? React.useLayoutEffect : React.useEffect;
+
 export default function ConversationDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -62,10 +65,26 @@ export default function ConversationDetailPage() {
 
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const isScrolledToBottomRef = React.useRef(true);
+  const initialScrolledRef = React.useRef(false);
   const messagesContainerRef = React.useRef<HTMLDivElement>(null);
 
+  // Reset scroll lock when conversation ID changes
+  React.useEffect(() => {
+    initialScrolledRef.current = false;
+    isScrolledToBottomRef.current = true;
+  }, [conversationId]);
+
   const scrollToBottom = React.useCallback((behavior: ScrollBehavior = "smooth") => {
-    if (typeof messagesEndRef.current?.scrollIntoView === "function") {
+    if (messagesContainerRef.current) {
+      if (typeof messagesContainerRef.current.scrollTo === "function") {
+        messagesContainerRef.current.scrollTo({
+          top: messagesContainerRef.current.scrollHeight,
+          behavior,
+        });
+      } else {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+      }
+    } else if (typeof messagesEndRef.current?.scrollIntoView === "function") {
       messagesEndRef.current.scrollIntoView({ behavior });
     }
   }, []);
@@ -77,6 +96,16 @@ export default function ConversationDetailPage() {
     isScrolledToBottomRef.current = scrollHeight - scrollTop - clientHeight < 60;
   }, []);
 
+  // Synchronously position scroll at the bottom before initial browser paint (WhatsApp / Instagram behavior)
+  useIsomorphicLayoutEffect(() => {
+    if (messagesContainerRef.current && messages.length > 0 && !loading) {
+      if (!initialScrolledRef.current) {
+        messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        initialScrolledRef.current = true;
+      }
+    }
+  }, [messages.length, loading]);
+
   // 1. Initial Load & Hydration
   React.useEffect(() => {
     let ignore = false;
@@ -86,10 +115,6 @@ export default function ConversationDetailPage() {
 
       const cachedMeta = getCached<FormattedConversationDetails>(metadataKey);
       const cachedMsgs = getCached<MessageType[]>(messagesKey);
-
-      if (cachedMsgs?.data && cachedMsgs.data.length > 0) {
-        setTimeout(() => scrollToBottom("auto"), 50);
-      }
 
       // Fetch conversation metadata if missing or stale
       if (!cachedMeta || cachedMeta.isStale) {
@@ -124,7 +149,6 @@ export default function ConversationDetailPage() {
             if (!ignore && msgJson?.data?.messages) {
               const merged = updateCachedConversationMessages(conversationId, msgJson.data.messages);
               setMessages(merged);
-              setTimeout(() => scrollToBottom("auto"), 50);
             }
           }
         } catch {
@@ -150,7 +174,7 @@ export default function ConversationDetailPage() {
       ignore = true;
       unsubMessages();
     };
-  }, [conversationId, metadataKey, messagesKey, router, scrollToBottom]);
+  }, [conversationId, metadataKey, messagesKey, router]);
 
   // 2. Focus-Aware Real-Time Polling for New Messages
   React.useEffect(() => {
@@ -180,7 +204,7 @@ export default function ConversationDetailPage() {
                   updateCachedInboxWithNewMessage(conversationId, newest, conversation?.peer);
                 }
                 if (isScrolledToBottomRef.current) {
-                  setTimeout(() => scrollToBottom("smooth"), 50);
+                  requestAnimationFrame(() => scrollToBottom("smooth"));
                 }
                 return merged;
               }
@@ -252,7 +276,7 @@ export default function ConversationDetailPage() {
         setMessages(updated);
         setInputText("");
         isScrolledToBottomRef.current = true;
-        setTimeout(() => scrollToBottom("smooth"), 50);
+        requestAnimationFrame(() => scrollToBottom("smooth"));
       }
     } catch {
       setSendError("Network error while sending message.");

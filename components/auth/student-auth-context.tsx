@@ -3,6 +3,8 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
+import { clearAllCache } from "@/lib/data-cache";
+
 export interface StudentUser {
   id: string;
   email: string;
@@ -59,11 +61,21 @@ export function StudentAuthProvider({
   const [skills, setSkills] = React.useState<StudentSkill[]>(initialSkills);
   const [loading, setLoading] = React.useState(false);
 
+  // Clear domain cache whenever student identity changes
+  const prevUserIdRef = React.useRef(initialUser?.id);
+  React.useEffect(() => {
+    if (user?.id !== prevUserIdRef.current) {
+      clearAllCache();
+      prevUserIdRef.current = user?.id;
+    }
+  }, [user?.id]);
+
   const refreshAuth = React.useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/auth/me");
       if (!res.ok) {
+        clearAllCache();
         router.replace("/");
         return;
       }
@@ -108,8 +120,10 @@ export function StudentAuthProvider({
 
   const logout = React.useCallback(async () => {
     try {
+      clearAllCache();
       await fetch("/api/auth/logout", { method: "POST" });
     } finally {
+      clearAllCache();
       router.replace("/");
     }
   }, [router]);

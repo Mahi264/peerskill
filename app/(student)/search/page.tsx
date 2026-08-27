@@ -24,6 +24,7 @@ import { Switch } from "@/components/ui/switch";
 import { AlertBanner } from "@/components/ui/toast";
 import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
 import { ViewerConnectionInfo } from "@/lib/validations/connection";
+import { subscribe } from "@/lib/data-cache";
 
 interface SearchDoubt {
   id: string;
@@ -272,6 +273,26 @@ function SearchPageContent() {
     filterLevel,
     currentPage,
   ]);
+
+  // Synchronize peer relationship status live from external connection mutations
+  React.useEffect(() => {
+    const unsubscribe = subscribe("peer:connection:*", (payload: unknown) => {
+      const event = payload as { key?: string; data?: ViewerConnectionInfo } | undefined;
+      if (!event?.key) return;
+      const targetUserId = event.key.replace("peer:connection:", "");
+      if (!targetUserId) return;
+
+      setPeerResults((prev) =>
+        prev.map((p) =>
+          p.id === targetUserId
+            ? { ...p, viewerConnection: event.data || undefined }
+            : p,
+        ),
+      );
+    });
+
+    return unsubscribe;
+  }, []);
 
   function getUrgencyBadge(urgency: SearchDoubt["urgency"]) {
     switch (urgency) {

@@ -16,7 +16,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
-import { ViewerConnectionInfo } from "@/lib/validations/connection";
+
+import {
+  CACHE_KEYS,
+  getCached,
+  setCached,
+  subscribe,
+  updatePeerConnectionRelationship,
+  ViewerConnectionInfo,
+} from "@/lib/data-cache";
 
 interface PeerProfileData {
   id: string;
@@ -61,8 +69,14 @@ export default function CampusPeerProfilePage() {
   const userId = params?.id as string;
 
   const { user: viewer } = useStudentAuth();
-  const [peer, setPeer] = React.useState<PeerProfileData | null>(null);
-  const [loading, setLoading] = React.useState(true);
+
+  // Synchronously initialize with cached data to eliminate skeleton flash
+  const profileKey = CACHE_KEYS.userProfile(userId);
+  const cachedInitial = getCached<PeerProfileData>(profileKey);
+  const [peer, setPeer] = React.useState<PeerProfileData | null>(
+    cachedInitial ? cachedInitial.data : null
+  );
+  const [loading, setLoading] = React.useState(!cachedInitial);
   const [error, setError] = React.useState<string | null>(null);
   const [actionLoading, setActionLoading] = React.useState(false);
   const [actionMessage, setActionMessage] = React.useState<string | null>(null);
@@ -81,46 +95,78 @@ export default function CampusPeerProfilePage() {
       }
 
       const peerJson = await peerRes.json();
-      setPeer(peerJson.data.user);
+      if (peerJson?.data?.user) {
+        setPeer(peerJson.data.user);
+        setCached(CACHE_KEYS.userProfile(userId), peerJson.data.user, 60_000);
+      }
     } catch {
       setError("Network error while loading campus peer profile.");
+    } finally {
+      setLoading(false);
     }
   }, [userId]);
 
   React.useEffect(() => {
+    if (!userId) return;
+
     let ignore = false;
     async function load() {
-      if (!userId) return;
-      try {
-        const peerRes = await fetch(`/api/users/${userId}`);
-        if (!peerRes.ok) {
-          if (!ignore) {
-            if (peerRes.status === 404) {
-              setError("Student profile not found or unavailable.");
-            } else {
-              setError("Failed to load campus peer profile.");
+      const cached = getCached<PeerProfileData>(CACHE_KEYS.userProfile(userId));
+      if (!cached || cached.isStale) {
+        try {
+          const peerRes = await fetch(`/api/users/${userId}`);
+          if (!peerRes.ok) {
+            if (!ignore) {
+              if (peerRes.status === 404) {
+                setError("Student profile not found or unavailable.");
+              } else {
+                setError("Failed to load campus peer profile.");
+              }
             }
+            return;
           }
-          return;
-        }
 
-        const peerJson = await peerRes.json();
-        if (!ignore) {
-          setPeer(peerJson.data.user);
-        }
-      } catch {
-        if (!ignore) {
-          setError("Network error while loading campus peer profile.");
-        }
-      } finally {
-        if (!ignore) {
-          setLoading(false);
+          const peerJson = await peerRes.json();
+          if (!ignore && peerJson?.data?.user) {
+            setPeer(peerJson.data.user);
+            setCached(CACHE_KEYS.userProfile(userId), peerJson.data.user, 60_000);
+          }
+        } catch {
+          if (!ignore) {
+            setError("Network error while loading campus peer profile.");
+          }
+        } finally {
+          if (!ignore) {
+            setLoading(false);
+          }
         }
       }
     }
-    load();
+    void load();
+
+    // Subscribe to relationship changes broadcast from other views (e.g., /connections, /search)
+    const unsubRelationship = subscribe(
+      CACHE_KEYS.peerConnection(userId),
+      (viewerConnection: unknown) => {
+        if (viewerConnection) {
+          setPeer((prev) =>
+            prev ? { ...prev, viewerConnection: viewerConnection as ViewerConnectionInfo } : prev,
+          );
+        }
+      },
+    );
+
+    // Subscribe to profile cache updates
+    const unsubProfile = subscribe(CACHE_KEYS.userProfile(userId), (updatedProfile: unknown) => {
+      if (updatedProfile) {
+        setPeer(updatedProfile as PeerProfileData);
+      }
+    });
+
     return () => {
       ignore = true;
+      unsubRelationship();
+      unsubProfile();
     };
   }, [userId]);
 
@@ -138,6 +184,12 @@ export default function CampusPeerProfilePage() {
         setActionMessage(json.error?.message || "Failed to send request.");
         return;
       }
+      const newConnection: ViewerConnectionInfo = {
+        state: "PENDING_OUTGOING",
+        connectionId: json.data?.connection?.id || undefined,
+      };
+      updatePeerConnectionRelationship(userId, newConnection);
+      setPeer((prev) => (prev ? { ...prev, viewerConnection: newConnection } : prev));
       await fetchPeerProfile();
     } catch {
       setActionMessage("Network error while sending request.");
@@ -148,11 +200,12 @@ export default function CampusPeerProfilePage() {
 
   async function handleAccept() {
     if (!peer?.viewerConnection?.connectionId) return;
+    const connId = peer.viewerConnection.connectionId;
     setActionLoading(true);
     setActionMessage(null);
     try {
       const res = await fetch(
-        `/api/connections/${peer.viewerConnection.connectionId}/accept`,
+        `/api/connections/${connId}/accept`,
         { method: "POST" },
       );
       const json = await res.json();
@@ -160,6 +213,12 @@ export default function CampusPeerProfilePage() {
         setActionMessage(json.error?.message || "Failed to accept request.");
         return;
       }
+      const newConnection: ViewerConnectionInfo = {
+        state: "CONNECTED",
+        connectionId: connId,
+      };
+      updatePeerConnectionRelationship(userId, newConnection);
+      setPeer((prev) => (prev ? { ...prev, viewerConnection: newConnection } : prev));
       await fetchPeerProfile();
     } catch {
       setActionMessage("Network error while accepting request.");
@@ -170,11 +229,12 @@ export default function CampusPeerProfilePage() {
 
   async function handleDecline() {
     if (!peer?.viewerConnection?.connectionId) return;
+    const connId = peer.viewerConnection.connectionId;
     setActionLoading(true);
     setActionMessage(null);
     try {
       const res = await fetch(
-        `/api/connections/${peer.viewerConnection.connectionId}/decline`,
+        `/api/connections/${connId}/decline`,
         { method: "POST" },
       );
       const json = await res.json();
@@ -182,6 +242,11 @@ export default function CampusPeerProfilePage() {
         setActionMessage(json.error?.message || "Failed to decline request.");
         return;
       }
+      const newConnection: ViewerConnectionInfo = {
+        state: "NOT_CONNECTED",
+      };
+      updatePeerConnectionRelationship(userId, newConnection);
+      setPeer((prev) => (prev ? { ...prev, viewerConnection: newConnection } : prev));
       await fetchPeerProfile();
     } catch {
       setActionMessage("Network error while declining request.");
@@ -192,11 +257,12 @@ export default function CampusPeerProfilePage() {
 
   async function handleCancelOrRemove() {
     if (!peer?.viewerConnection?.connectionId) return;
+    const connId = peer.viewerConnection.connectionId;
     setActionLoading(true);
     setActionMessage(null);
     try {
       const res = await fetch(
-        `/api/connections/${peer.viewerConnection.connectionId}`,
+        `/api/connections/${connId}`,
         { method: "DELETE" },
       );
       const json = await res.json();
@@ -204,6 +270,11 @@ export default function CampusPeerProfilePage() {
         setActionMessage(json.error?.message || "Failed to remove connection.");
         return;
       }
+      const newConnection: ViewerConnectionInfo = {
+        state: "NOT_CONNECTED",
+      };
+      updatePeerConnectionRelationship(userId, newConnection);
+      setPeer((prev) => (prev ? { ...prev, viewerConnection: newConnection } : prev));
       await fetchPeerProfile();
     } catch {
       setActionMessage("Network error while removing connection.");

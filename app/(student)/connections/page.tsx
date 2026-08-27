@@ -19,6 +19,14 @@ import { Card } from "@/components/ui/card";
 import { AlertBanner } from "@/components/ui/toast";
 import { formatPublicPeerAcademicSubtitle } from "@/lib/utils";
 
+import {
+  CACHE_KEYS,
+  getCached,
+  setCached,
+  subscribe,
+  updatePeerConnectionRelationship,
+} from "@/lib/data-cache";
+
 interface PeerInfo {
   id: string;
   fullName: string;
@@ -70,13 +78,18 @@ interface ConnectionsData {
 export default function ConnectionsPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = React.useState<"connected" | "incoming" | "outgoing">("connected");
-  const [connections, setConnections] = React.useState<ConnectionsData>({
-    connected: [],
-    incoming: [],
-    outgoing: [],
-    counts: { connected: 0, incoming: 0, outgoing: 0 },
-  });
-  const [loading, setLoading] = React.useState(true);
+
+  // Synchronously initialize with cached data to eliminate skeleton flash
+  const cachedInitial = getCached<ConnectionsData>(CACHE_KEYS.CONNECTIONS_ALL);
+  const [connections, setConnections] = React.useState<ConnectionsData>(
+    cachedInitial ? cachedInitial.data : {
+      connected: [],
+      incoming: [],
+      outgoing: [],
+      counts: { connected: 0, incoming: 0, outgoing: 0 },
+    }
+  );
+  const [loading, setLoading] = React.useState(!cachedInitial);
   const [actionError, setActionError] = React.useState<string | null>(null);
   const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null);
 
@@ -87,6 +100,7 @@ export default function ConnectionsPage() {
         const json = await res.json();
         if (json?.data) {
           setConnections(json.data);
+          setCached(CACHE_KEYS.CONNECTIONS_ALL, json.data, 20_000);
         }
       } else {
         setActionError("Failed to load connections.");
@@ -101,29 +115,45 @@ export default function ConnectionsPage() {
   React.useEffect(() => {
     let ignore = false;
     async function load() {
-      try {
-        const res = await fetch("/api/connections");
-        if (res.ok) {
-          const json = await res.json();
-          if (!ignore && json?.data) {
-            setConnections(json.data);
+      const cached = getCached<ConnectionsData>(CACHE_KEYS.CONNECTIONS_ALL);
+      if (!cached || cached.isStale) {
+        try {
+          const res = await fetch("/api/connections");
+          if (res.ok) {
+            const json = await res.json();
+            if (!ignore && json?.data) {
+              setConnections(json.data);
+              setCached(CACHE_KEYS.CONNECTIONS_ALL, json.data, 20_000);
+            }
           }
-        }
-      } catch (err) {
-        console.error("Failed to load connections:", err);
-      } finally {
-        if (!ignore) {
-          setLoading(false);
+        } catch {
+          // ignore
+        } finally {
+          if (!ignore) {
+            setLoading(false);
+          }
         }
       }
     }
-    load();
+    void load();
+
+    // Subscribe to cross-route invalidations or updates
+    const unsubscribe = subscribe(CACHE_KEYS.CONNECTIONS_ALL, (updatedData) => {
+      if (updatedData !== undefined) {
+        setConnections(updatedData as ConnectionsData);
+      } else {
+        void fetchConnections();
+      }
+    });
+
     return () => {
       ignore = true;
+      unsubscribe();
     };
-  }, []);
+  }, [fetchConnections]);
 
   async function handleAccept(connectionId: string) {
+    const peerId = connections.incoming.find((item) => item.id === connectionId)?.requester.id;
     setActionLoadingId(connectionId);
     setActionError(null);
     try {
@@ -135,6 +165,12 @@ export default function ConnectionsPage() {
         setActionError(json?.error?.message || "Failed to accept connection.");
         return;
       }
+      if (peerId) {
+        updatePeerConnectionRelationship(peerId, {
+          state: "CONNECTED",
+          connectionId,
+        });
+      }
       await fetchConnections();
     } catch {
       setActionError("Network error while accepting connection.");
@@ -144,6 +180,7 @@ export default function ConnectionsPage() {
   }
 
   async function handleDecline(connectionId: string) {
+    const peerId = connections.incoming.find((item) => item.id === connectionId)?.requester.id;
     setActionLoadingId(connectionId);
     setActionError(null);
     try {
@@ -155,6 +192,11 @@ export default function ConnectionsPage() {
         setActionError(json?.error?.message || "Failed to decline connection.");
         return;
       }
+      if (peerId) {
+        updatePeerConnectionRelationship(peerId, {
+          state: "NOT_CONNECTED",
+        });
+      }
       await fetchConnections();
     } catch {
       setActionError("Network error while declining connection.");
@@ -164,6 +206,10 @@ export default function ConnectionsPage() {
   }
 
   async function handleCancelOrRemove(connectionId: string) {
+    const peerId =
+      connections.connected.find((item) => item.id === connectionId)?.peer.id ||
+      connections.outgoing.find((item) => item.id === connectionId)?.receiver.id;
+
     setActionLoadingId(connectionId);
     setActionError(null);
     try {
@@ -174,6 +220,11 @@ export default function ConnectionsPage() {
       if (!res.ok) {
         setActionError(json?.error?.message || "Failed to remove connection.");
         return;
+      }
+      if (peerId) {
+        updatePeerConnectionRelationship(peerId, {
+          state: "NOT_CONNECTED",
+        });
       }
       await fetchConnections();
     } catch {
